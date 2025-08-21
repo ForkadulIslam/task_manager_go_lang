@@ -3,13 +3,14 @@ package controllers
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-	"github.com/go-sql-driver/mysql"
-	"github.com/go-playground/validator/v10"
-	"github.com/go-playground/locales/en"
-	"github.com/go-playground/universal-translator"
 	"taskmanager/database"
 	"taskmanager/models"
+
+	"github.com/gin-gonic/gin"
+	"github.com/go-playground/locales/en"
+	"github.com/go-playground/universal-translator"
+	"github.com/go-playground/validator/v10"
+	"github.com/go-sql-driver/mysql"
 )
 
 type CreateGroupInput struct {
@@ -69,12 +70,34 @@ func CreateGroup(c *gin.Context) {
 // GetGroups retrieves all groups
 func GetGroups(c *gin.Context) {
 	var groups []models.Group
-	if err := database.DB.Find(&groups).Error; err != nil {
+	// Preload the Users relationship
+	if err := database.DB.Preload("Users").Find(&groups).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve groups"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": groups})
+	var groupResponses []models.GroupResponse
+	for _, group := range groups {
+		var userResponses []models.UserResponse
+		for _, user := range group.Users {
+			userResponses = append(userResponses, models.UserResponse{
+				ID:        user.ID,
+				Username:  user.Username,
+				Status:    user.Status,
+				UserLabel: user.UserLabel,
+			})
+		}
+		groupResponses = append(groupResponses, models.GroupResponse{
+			ID:        group.ID,
+			Label:     group.Label,
+			CreatedBy: group.CreatedBy,
+			CreatedAt: group.CreatedAt,
+			UpdatedAt: group.UpdatedAt,
+			Users:     userResponses,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": groupResponses})
 }
 
 // GetGroupByID retrieves a single group by ID
@@ -125,3 +148,5 @@ func DeleteGroup(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Group deleted successfully"})
 }
+
+

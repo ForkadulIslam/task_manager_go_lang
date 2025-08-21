@@ -1,11 +1,13 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"taskmanager/database"
 	"taskmanager/models"
+
+	"github.com/gin-gonic/gin"
 )
 
 type AddUserToGroupInput struct {
@@ -59,12 +61,12 @@ func GetUsersInGroup(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": userGroups})
 }
 
-// GetGroupsForUser retrieves all groups a specific user belongs to
+// GetGroupsForUser retrieves all groups the authenticated user belongs to
 func GetGroupsForUser(c *gin.Context) {
-	userID := c.Param("user_id")
+	userID := c.MustGet("user_id").(float64) // user_id is stored as float64 by jwt-go
 	var userGroups []models.UserGroup
-
-	if err := database.DB.Where("user_id = ?", userID).Find(&userGroups).Error; err != nil {
+	fmt.Println(userID)
+	if err := database.DB.Where("user_id = ?", uint(userID)).Find(&userGroups).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve groups for user"})
 		return
 	}
