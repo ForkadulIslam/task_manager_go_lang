@@ -9,7 +9,7 @@ type Task struct {
 	TaskTypeID  uint      `gorm:"not null"` // FK to task_types.id
 	Priority    string    `gorm:"type:enum('Normal', 'Medium', 'High', 'Escalation');default:'Normal'"`
 	StartDate   time.Time `gorm:"type:date"`
-	DueDate     time.Time `gorm:"type:date"`
+	DueDate     *time.Time `gorm:"type:date"`
 	Description string    `gorm:"type:longtext"`
 	Attachment  string    `gorm:"type:varchar(255);nullable"`
 	Status      string    `gorm:"type:enum('Pending','In Progress','In Review','Completed');default:'Pending';comment:0=Pending,1=In Progress,2=In Review,3=Completed"`

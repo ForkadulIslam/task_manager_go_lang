@@ -16,8 +16,8 @@ type CreateTaskInput struct {
 	Label       string         `json:"label" binding:"required,min=3,max=255"`
 	TaskTypeID  uint           `json:"task_type_id" binding:"required,gt=0"`
 	Priority    string         `json:"priority" binding:"required,oneof=Normal Medium High Escalation"`
-	StartDate   utils.DateOnly `json:"start_date" binding:"required"`
-	DueDate     *utils.DateOnly `json:"due_date" binding:"omitempty,gtefield=StartDate"`
+	StartDate   utils.Date `json:"start_date" binding:"required"`
+	DueDate     *utils.Date `json:"due_date" binding:"omitempty,gtefield=StartDate"`
 	Description string         `json:"description"`
 	Attachment  string         `json:"attachment"`
 	Status      string         `json:"status"`
@@ -27,8 +27,8 @@ type UpdateTaskInput struct {
 	Label       string         `json:"label" binding:"min=3,max=255"`
 	TaskTypeID  uint           `json:"task_type_id" binding:"gt=0"`
 	Priority    string         `json:"priority" binding:"oneof=Normal Medium High Escalation"`
-	StartDate   utils.DateOnly `json:"start_date" binding:"required"`
-	DueDate     *utils.DateOnly `json:"due_date" binding:"omitempty,gtefield=StartDate"`
+	StartDate   utils.Date `json:"start_date" binding:"required"`
+	DueDate     *utils.Date `json:"due_date" binding:"omitempty,gtefield=StartDate"`
 	Description string         `json:"description"`
 	Attachment  string         `json:"attachment"`
 	Status      string         `json:"status"`
@@ -88,6 +88,13 @@ func CreateTask(c *gin.Context) {
 		return
 	}
 
+	// Check if the task type exists
+	var taskType models.TaskType
+	if err := database.DB.First(&taskType, input.TaskTypeID).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": []string{"Invalid task type ID"}})
+		return
+	}
+
 	// Placeholder CreatedBy - should come from authenticated user
 	task := models.Task{
 		Label:       input.Label,
@@ -101,7 +108,7 @@ func CreateTask(c *gin.Context) {
 	}
 
 	if input.DueDate != nil {
-		task.DueDate = input.DueDate.Time
+		task.DueDate = &input.DueDate.Time
 	}
 
 	if err := database.DB.Create(&task).Error; err != nil {
@@ -187,12 +194,6 @@ func UpdateTask(c *gin.Context) {
 		return
 	}
 
-	task.StartDate = input.StartDate.Time
-	
-	if input.DueDate != nil {
-		task.DueDate = input.DueDate.Time
-	}
-
 	database.DB.Model(&task).Updates(input)
 
 	c.JSON(http.StatusOK, gin.H{"data": task})
@@ -211,17 +212,4 @@ func DeleteTask(c *gin.Context) {
 	database.DB.Delete(&task)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Task deleted successfully"})
-}
-
-// TestDate is a temporary function to test date parsing
-func TestDate(c *gin.Context) {
-	type TestInput struct {
-		Date utils.DateOnly `json:"date"`
-	}
-	var input TestInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"date": input.Date})
 }

@@ -60,4 +60,5 @@ func SetupRoutes(r *gin.Engine) {
 		auth.GET("/tasks/followup-users/:task_id", controllers.GetFollowupUsersForTask)
 	}
 
-	r.POST("/test-date", controllers.TestDate)
+	
+}
