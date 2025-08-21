@@ -1,0 +1,15 @@
+Post data:
+{
+    "label":"HR panel",
+    "task_type_id":1,
+    "priority":"Normal",
+    "start_date":"2025-08-22",
+    "due_date":"2025-08-23"
+}
+
+Postman response:
+{
+    "errors": [
+        "Invalid date format. Please use YYYY-MM-DD."
+    ]
+}
