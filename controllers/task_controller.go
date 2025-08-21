@@ -104,7 +104,7 @@ func CreateTask(c *gin.Context) {
 		Description: input.Description,
 		Attachment:  input.Attachment,
 		Status:      input.Status,
-		CreatedBy:   1, // Placeholder
+		CreatedBy:   uint(c.MustGet("user_id").(float64)),
 	}
 
 	if input.DueDate != nil {

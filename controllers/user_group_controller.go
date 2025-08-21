@@ -98,11 +98,30 @@ func RemoveUserFromGroup(c *gin.Context) {
 	id := c.Param("id")
 	var userGroup models.UserGroup
 
+	// 1. Check if the user-group association exists
 	if err := database.DB.Where("id = ?", id).First(&userGroup).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User-group association not found"})
 		return
 	}
 
+	// 2. Get the authenticated user's ID
+	authUserID := uint(c.MustGet("user_id").(float64))
+
+	// 3. Find the associated group
+	var group models.Group
+	if err := database.DB.First(&group, userGroup.GroupID).Error; err != nil {
+		// This case should ideally not happen if data integrity is maintained
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Associated group not found"})
+		return
+	}
+
+	// 4. Check if the authenticated user is the owner of the group
+	if group.CreatedBy != authUserID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You are not authorized to remove users from this group"})
+		return
+	}
+
+	// 5. Delete the user-group association
 	database.DB.Delete(&userGroup)
 
 	c.JSON(http.StatusOK, gin.H{"message": "User removed from group successfully"})
