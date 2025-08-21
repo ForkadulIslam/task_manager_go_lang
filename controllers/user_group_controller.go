@@ -1,11 +1,13 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"taskmanager/database"
 	"taskmanager/models"
+
+	"github.com/gin-gonic/gin"
 )
 
 type AddUserToGroupInput struct {
@@ -13,18 +15,78 @@ type AddUserToGroupInput struct {
 	GroupID uint `json:"group_id" binding:"required"`
 }
 
+// GetGroupsCreatedByUser list group created by auth user
+func GetGroupsCreatedByUser(c *gin.Context) {
+	userID := c.MustGet("user_id").(float64) // user_id is stored as float64 by jwt-go
+	var groups []models.Group
+	if err := database.DB.Preload("Users").Where("created_by = ?", uint(userID)).Find(&groups).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve groups created by user"})
+		return
+	}
+
+	var groupResponses []models.GroupResponse
+	for _, group := range groups {
+		var userResponses []models.UserResponse
+		for _, user := range group.Users {
+			var userGroup models.UserGroup
+			if err := database.DB.Where("user_id = ? AND group_id = ?", user.ID, group.ID).First(&userGroup).Error; err != nil {
+				// Handle error or skip if association not found (shouldn't happen if Preload is correct)
+				continue
+			}
+			userResponses = append(userResponses, models.UserResponse{
+				ID:            user.ID,
+				Username:      user.Username,
+				Status:        user.Status,
+				UserLabel:     user.UserLabel,
+				AssociationID: userGroup.ID,
+			})
+		}
+		groupResponses = append(groupResponses, models.GroupResponse{
+			ID:        group.ID,
+			Label:     group.Label,
+			CreatedBy: group.CreatedBy,
+			CreatedAt: group.CreatedAt,
+			UpdatedAt: group.UpdatedAt,
+			Users:     userResponses,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": groupResponses})
+}
+
 // AddUserToGroup adds a user to a group
 func AddUserToGroup(c *gin.Context) {
 	var input AddUserToGroupInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"errors": []string{err.Error()}})
 		return
 	}
 
+	// Check if UserID exists
+	var user models.User
+	if err := database.DB.First(&user, input.UserID).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": []string{"User not found"}})
+		return
+	}
+
+	// Check if GroupID exists
+	var group models.Group
+	if err := database.DB.First(&group, input.GroupID).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": []string{"Group not found"}})
+		return
+	}
+
+	// Check if the user is already in the group
+	var existingUserGroup models.UserGroup
+	if database.DB.Where("user_id = ? AND group_id = ?", input.UserID, input.GroupID).First(&existingUserGroup).Error == nil {
+		c.JSON(http.StatusConflict, gin.H{"errors": []string{"User is already in this group"}})
+		return
+	}
+	
 	userGroup := models.UserGroup{UserID: input.UserID, GroupID: input.GroupID}
 
 	if err := database.DB.Create(&userGroup).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add user to group"})
+		c.JSON(http.StatusInternalServerError, gin.H{"errors": []string{"Failed to add user to group"}})
 		return
 	}
 
@@ -46,25 +108,12 @@ func RemoveUserFromGroup(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User removed from group successfully"})
 }
 
-// GetUsersInGroup retrieves all users in a specific group
-func GetUsersInGroup(c *gin.Context) {
-	groupID := c.Param("group_id")
-	var userGroups []models.UserGroup
-
-	if err := database.DB.Where("group_id = ?", groupID).Find(&userGroups).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve users in group"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"data": userGroups})
-}
-
-// GetGroupsForUser retrieves all groups a specific user belongs to
+// GetGroupsForUser retrieves all groups the authenticated user belongs to
 func GetGroupsForUser(c *gin.Context) {
-	userID := c.Param("user_id")
+	userID := c.MustGet("user_id").(float64) // user_id is stored as float64 by jwt-go
 	var userGroups []models.UserGroup
-
-	if err := database.DB.Where("user_id = ?", userID).Find(&userGroups).Error; err != nil {
+	fmt.Println(userID)
+	if err := database.DB.Where("user_id = ?", uint(userID)).Find(&userGroups).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve groups for user"})
 		return
 	}

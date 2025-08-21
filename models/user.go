@@ -13,3 +13,11 @@ type User struct {
 	CreatedAt time.Time `gorm:"type:timestamp;autoCreateTime"`
 	UpdatedAt time.Time `gorm:"type:timestamp;autoUpdateTime"`
 }
+
+type UserResponse struct {
+	ID            uint   `json:"id"`
+	Username      string `json:"username"`
+	Status        int    `json:"status"`
+	UserLabel     int    `json:"user_label"`
+	AssociationID uint   `json:"association_id,omitempty"` // ID from the user_groups table
+}
