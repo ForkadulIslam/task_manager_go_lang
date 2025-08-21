@@ -13,14 +13,16 @@ import (
 )
 
 type CreateTaskInput struct {
-	Label       string         `json:"label" binding:"required,min=3,max=255"`
-	TaskTypeID  uint           `json:"task_type_id" binding:"required,gt=0"`
-	Priority    string         `json:"priority" binding:"required,oneof=Normal Medium High Escalation"`
-	StartDate   utils.Date `json:"start_date" binding:"required"`
-	DueDate     *utils.Date `json:"due_date" binding:"omitempty,gtefield=StartDate"`
-	Description string         `json:"description"`
-	Attachment  string         `json:"attachment"`
-	Status      string         `json:"status"`
+	Label           string         `json:"label" binding:"required,min=3,max=255"`
+	TaskTypeID      uint           `json:"task_type_id" binding:"required,gt=0"`
+	Priority        string         `json:"priority" binding:"required,oneof=Normal Medium High Escalation"`
+	StartDate       utils.Date `json:"start_date" binding:"required"`
+	DueDate         *utils.Date `json:"due_date" binding:"omitempty,gtefield=StartDate"`
+	Description     string         `json:"description"`
+	Attachment      string         `json:"attachment"`
+	Status          string         `json:"status"`
+	AssignedToUsers []uint         `json:"assigned_to_users" binding:"omitempty,dive,gt=0"`
+	AssignedToGroups []uint         `json:"assigned_to_groups" binding:"omitempty,dive,gt=0"`
 }
 
 type UpdateTaskInput struct {
@@ -95,7 +97,7 @@ func CreateTask(c *gin.Context) {
 		return
 	}
 
-	// Placeholder CreatedBy - should come from authenticated user
+	
 	task := models.Task{
 		Label:       input.Label,
 		TaskTypeID:  input.TaskTypeID,
@@ -114,6 +116,32 @@ func CreateTask(c *gin.Context) {
 	if err := database.DB.Create(&task).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
 		return
+	}
+
+	// Assign task to users
+	for _, userID := range input.AssignedToUsers {
+		assignToUser := models.AssignTaskToUser{
+			TaskID: task.ID,
+			UserID: userID,
+		}
+		if err := database.DB.Create(&assignToUser).Error; err != nil {
+			// Handle error, perhaps rollback task creation or log it
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign task to user"})
+			return
+		}
+	}
+
+	// Assign task to groups
+	for _, groupID := range input.AssignedToGroups {
+		assignToGroup := models.AssignTaskToGroup{
+			TaskID:  task.ID,
+			GroupID: groupID,
+		}
+		if err := database.DB.Create(&assignToGroup).Error; err != nil {
+			// Handle error, perhaps rollback task creation or log it
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign task to group"})
+			return
+		}
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"data": task})
