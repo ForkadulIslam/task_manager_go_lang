@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/locales/en"
-	"github.com/go-playground/universal-translator"
+	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	"github.com/go-sql-driver/mysql"
 )
@@ -53,7 +53,7 @@ func CreateGroup(c *gin.Context) {
 
 	// In a real application, you would get the CreatedBy from the authenticated user's ID
 	// For now, we'll use a placeholder or assume it's handled by middleware
-	group := models.Group{Label: input.Label, CreatedBy: 1} // Placeholder CreatedBy
+	group := models.Group{Label: input.Label, CreatedBy: uint(c.MustGet("user_id").(float64))}
 
 	if err := database.DB.Create(&group).Error; err != nil {
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == 1062 {
@@ -105,12 +105,30 @@ func GetGroupByID(c *gin.Context) {
 	id := c.Param("id")
 	var group models.Group
 
-	if err := database.DB.Where("id = ?", id).First(&group).Error; err != nil {
+	if err := database.DB.Preload("Users").Where("id = ?", id).First(&group).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Group not found"})
 		return
 	}
+	var userResponses []models.UserResponse
+	for _, user := range group.Users {
+		userResponses = append(userResponses, models.UserResponse{
+			ID:        user.ID,
+			Username:  user.Username,
+			Status:    user.Status,
+			UserLabel: user.UserLabel,
+		})
+	}
 
-	c.JSON(http.StatusOK, gin.H{"data": group})
+	groupResponse := models.GroupResponse{
+		ID:        group.ID,
+		Label:     group.Label,
+		CreatedBy: group.CreatedBy,
+		CreatedAt: group.CreatedAt,
+		UpdatedAt: group.UpdatedAt,
+		Users:     userResponses,
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": groupResponse})
 }
 
 // UpdateGroup updates an existing group
@@ -148,5 +166,3 @@ func DeleteGroup(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Group deleted successfully"})
 }
-
-

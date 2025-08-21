@@ -38,8 +38,8 @@ func SetupRoutes(r *gin.Engine) {
 
 		// UserGroup routes
 		auth.POST("/user-groups", controllers.AddUserToGroup)
+		auth.GET("/user-groups", controllers.GetGroupsCreatedByUser)
 		auth.DELETE("/user-groups/:id", controllers.RemoveUserFromGroup)
-		auth.GET("/groups/users/:group_id", controllers.GetUsersInGroup)
 		auth.GET("/user-groups/my-groups", controllers.GetGroupsForUser)
 
 		// AssignTaskToUser routes
