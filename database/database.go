@@ -19,7 +19,7 @@ func ConnectDatabase() {
 		log.Fatal("Failed to connect to database! \n" + err.Error())
 	}
 
-	database.AutoMigrate(
+			database.AutoMigrate(
 		&models.User{},
 		&models.Group{},
 		&models.TaskType{},

@@ -58,6 +58,9 @@ func SetupRoutes(r *gin.Engine) {
 		auth.POST("/task-followup-users", controllers.AddTaskFollowupUser)
 		auth.DELETE("/task-followup-users/:id", controllers.RemoveTaskFollowupUser)
 		auth.GET("/tasks/followup-users/:task_id", controllers.GetFollowupUsersForTask)
+
+		// Attachment upload route
+		auth.POST("/upload-attachment", controllers.UploadAttachment)
 	}
 
 	

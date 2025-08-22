@@ -16,4 +16,6 @@ type Task struct {
 	CreatedBy   uint      `gorm:"not null"` // FK to users.id
 	CreatedAt   time.Time `gorm:"type:timestamp;autoCreateTime"`
 	UpdatedAt   time.Time `gorm:"type:timestamp;autoUpdateTime"`
+	AssignedUsers []AssignTaskToUser `gorm:"foreignKey:TaskID"` // One-to-Many relationship
+	AssignedGroups []AssignTaskToGroup `gorm:"foreignKey:TaskID"` // One-to-Many relationship
 }

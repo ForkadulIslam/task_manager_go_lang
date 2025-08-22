@@ -5,4 +5,5 @@ type AssignTaskToGroup struct {
 	ID      uint `gorm:"primaryKey"`
 	GroupID uint `gorm:"not null"` // FK to groups.id
 	TaskID  uint `gorm:"not null"` // FK to tasks.id
+	Group   Group // Belongs to Group
 }

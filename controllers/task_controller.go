@@ -1,37 +1,41 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
+
+	"taskmanager/database"
+	"taskmanager/models"
+	"taskmanager/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
-	"taskmanager/database"
-	"taskmanager/models"
-	"taskmanager/utils"
 )
 
 type CreateTaskInput struct {
-	Label       string         `json:"label" binding:"required,min=3,max=255"`
-	TaskTypeID  uint           `json:"task_type_id" binding:"required,gt=0"`
-	Priority    string         `json:"priority" binding:"required,oneof=Normal Medium High Escalation"`
-	StartDate   utils.Date `json:"start_date" binding:"required"`
-	DueDate     *utils.Date `json:"due_date" binding:"omitempty,gtefield=StartDate"`
-	Description string         `json:"description"`
-	Attachment  string         `json:"attachment"`
-	Status      string         `json:"status"`
+	Label            string      `json:"label" binding:"required,min=3,max=255"`
+	TaskTypeID       uint        `json:"task_type_id" binding:"required,gt=0"`
+	Priority         string      `json:"priority" binding:"required,oneof=Normal Medium High Escalation"`
+	StartDate        utils.Date  `json:"start_date" binding:"required"`
+	DueDate          *utils.Date `json:"due_date" binding:"omitempty,gtefield=StartDate"`
+	Description      string      `json:"description"`
+	Attachment       string      `json:"attachment"`
+	Status           string      `json:"status"`
+	AssignedToUsers  []uint      `json:"assigned_to_users" binding:"omitempty,dive,gt=0"`
+	AssignedToGroups []uint      `json:"assigned_to_groups" binding:"omitempty,dive,gt=0"`
 }
 
 type UpdateTaskInput struct {
-	Label       string         `json:"label" binding:"min=3,max=255"`
-	TaskTypeID  uint           `json:"task_type_id" binding:"gt=0"`
-	Priority    string         `json:"priority" binding:"oneof=Normal Medium High Escalation"`
-	StartDate   utils.Date `json:"start_date" binding:"required"`
+	Label       string      `json:"label" binding:"min=3,max=255"`
+	TaskTypeID  uint        `json:"task_type_id" binding:"gt=0"`
+	Priority    string      `json:"priority" binding:"oneof=Normal Medium High Escalation"`
+	StartDate   utils.Date  `json:"start_date" binding:"required"`
 	DueDate     *utils.Date `json:"due_date" binding:"omitempty,gtefield=StartDate"`
-	Description string         `json:"description"`
-	Attachment  string         `json:"attachment"`
-	Status      string         `json:"status"`
+	Description string      `json:"description"`
+	Attachment  string      `json:"attachment"`
+	Status      string      `json:"status"`
 }
 
 // CreateTask creates a new task
@@ -60,8 +64,6 @@ func CreateTask(c *gin.Context) {
 				case "TaskTypeID":
 					if e.Tag() == "required" {
 						errors = append(errors, "Task type is required")
-					} else if e.Tag() == "gt" {
-						errors = append(errors, "Task type ID must be greater than 0")
 					}
 				case "Priority":
 					if e.Tag() == "required" {
@@ -95,7 +97,24 @@ func CreateTask(c *gin.Context) {
 		return
 	}
 
-	// Placeholder CreatedBy - should come from authenticated user
+	// Validate AssignedToUsers
+	for _, userID := range input.AssignedToUsers {
+		var user models.User
+		if err := database.DB.First(&user, userID).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"errors": []string{fmt.Sprintf("User with ID %d not found", userID)}})
+			return
+		}
+	}
+
+	// Validate AssignedToGroups
+	for _, groupID := range input.AssignedToGroups {
+		var group models.Group
+		if err := database.DB.First(&group, groupID).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"errors": []string{fmt.Sprintf("Group with ID %d not found", groupID)}})
+			return
+		}
+	}
+
 	task := models.Task{
 		Label:       input.Label,
 		TaskTypeID:  input.TaskTypeID,
@@ -115,6 +134,32 @@ func CreateTask(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
 		return
 	}
+	
+	// Assign task to users
+	for _, userID := range input.AssignedToUsers {
+		assignToUser := models.AssignTaskToUser{
+			TaskID: task.ID,
+			UserID: userID,
+		}
+		if err := database.DB.Create(&assignToUser).Error; err != nil {
+			// Handle error, perhaps rollback task creation or log it
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign task to user"})
+			return
+		}
+	}
+
+	// Assign task to groups
+	for _, groupID := range input.AssignedToGroups {
+		assignToGroup := models.AssignTaskToGroup{
+			TaskID:  task.ID,
+			GroupID: groupID,
+		}
+		if err := database.DB.Create(&assignToGroup).Error; err != nil {
+			// Handle error, perhaps rollback task creation or log it
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign task to group"})
+			return
+		}
+	}
 
 	c.JSON(http.StatusCreated, gin.H{"data": task})
 }
@@ -122,7 +167,7 @@ func CreateTask(c *gin.Context) {
 // GetTasks retrieves all tasks
 func GetTasks(c *gin.Context) {
 	var tasks []models.Task
-	if err := database.DB.Find(&tasks).Error; err != nil {
+	if err := database.DB.Preload("AssignedUsers.User").Preload("AssignedGroups.Group.Users").Find(&tasks).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tasks"})
 		return
 	}
@@ -135,7 +180,7 @@ func GetTaskByID(c *gin.Context) {
 	id := c.Param("id")
 	var task models.Task
 
-	if err := database.DB.Where("id = ?", id).First(&task).Error; err != nil {
+	if err := database.DB.Preload("AssignedUsers.User").Preload("AssignedGroups.Group.Users").Where("id = ?", id).First(&task).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"errors": []string{"Task not found"}})
 		return
 	}
