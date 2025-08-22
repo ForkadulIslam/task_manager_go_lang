@@ -25,6 +25,7 @@ type CreateTaskInput struct {
 	Status           string      `json:"status"`
 	AssignedToUsers  []uint      `json:"assigned_to_users" binding:"omitempty,dive,gt=0"`
 	AssignedToGroups []uint      `json:"assigned_to_groups" binding:"omitempty,dive,gt=0"`
+	FollowUpUsers    []uint      `json:"follow_up_users" binding:"omitempty,dive,gt=0"`
 }
 
 type UpdateTaskInput struct {
@@ -38,6 +39,7 @@ type UpdateTaskInput struct {
 	Status           string      `json:"status"`
 	AssignedToUsers  []uint      `json:"assigned_to_users" binding:"omitempty,dive,gt=0"`
 	AssignedToGroups []uint      `json:"assigned_to_groups" binding:"omitempty,dive,gt=0"`
+	FollowUpUsers    []uint      `json:"follow_up_users" binding:"omitempty,dive,gt=0"`
 }
 
 // CreateTask creates a new task
@@ -117,6 +119,15 @@ func CreateTask(c *gin.Context) {
 		}
 	}
 
+	// Validate FollowUpUsers
+	for _, userID := range input.FollowUpUsers {
+		var user models.User
+		if err := database.DB.First(&user, userID).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"errors": []string{fmt.Sprintf("Follow-up user with ID %d not found", userID)}})
+			return
+		}
+	}
+
 	task := models.Task{
 		Label:       input.Label,
 		TaskTypeID:  input.TaskTypeID,
@@ -163,13 +174,26 @@ func CreateTask(c *gin.Context) {
 		}
 	}
 
+	// Assign task to follow-up users
+	for _, userID := range input.FollowUpUsers {
+		followUpUser := models.TaskFollowupUser{
+			TaskID: task.ID,
+			UserID: userID,
+		}
+		if err := database.DB.Create(&followUpUser).Error; err != nil {
+			// Handle error, perhaps rollback task creation or log it
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign task to follow-up user"})
+			return
+		}
+	}
+
 	c.JSON(http.StatusCreated, gin.H{"data": task})
 }
 
 // GetTasks retrieves all tasks
 func GetTasks(c *gin.Context) {
 	var tasks []models.Task
-	if err := database.DB.Preload("AssignedUsers.User").Preload("AssignedGroups.Group.Users").Find(&tasks).Error; err != nil {
+	if err := database.DB.Preload("AssignedUsers.User").Preload("AssignedGroups.Group.Users").Preload("FollowupUsers.User").Find(&tasks).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tasks"})
 		return
 	}
@@ -182,7 +206,7 @@ func GetTaskByID(c *gin.Context) {
 	id := c.Param("id")
 	var task models.Task
 
-	if err := database.DB.Preload("AssignedUsers.User").Preload("AssignedGroups.Group.Users").Where("id = ?", id).First(&task).Error; err != nil {
+	if err := database.DB.Preload("AssignedUsers.User").Preload("AssignedGroups.Group.Users").Preload("FollowupUsers.User").Where("id = ?", id).First(&task).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"errors": []string{"Task not found"}})
 		return
 	}
@@ -195,8 +219,14 @@ func UpdateTask(c *gin.Context) {
 	id := c.Param("id")
 	var task models.Task
 
-	if err := database.DB.Where("id = ?", id).First(&task).Error; err != nil {
+	if err := database.DB.First(&task, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"errors": []string{"Task not found"}})
+		return
+	}
+
+	authUserID := uint(c.MustGet("user_id").(float64))
+	if task.CreatedBy != authUserID {
+		c.JSON(http.StatusForbidden, gin.H{"errors": []string{"You are not authorized to update this task"}})
 		return
 	}
 
@@ -211,28 +241,8 @@ func UpdateTask(c *gin.Context) {
 			_ = ve.Translate(trans)
 
 			for _, e := range ve {
-				switch e.Field() {
-				case "Label":
-					if e.Tag() == "min" {
-						errors = append(errors, "Task label must be at least 3 characters long")
-					} else if e.Tag() == "max" {
-						errors = append(errors, "Task label cannot exceed 255 characters")
-					}
-				case "TaskTypeID":
-					if e.Tag() == "gt" {
-						errors = append(errors, "Task type ID must be greater than 0")
-					}
-				case "Priority":
-					if e.Tag() == "oneof" {
-						errors = append(errors, "Invalid priority value. Must be Normal, Medium, High, or Escalation")
-					}
-				case "DueDate":
-					if e.Tag() == "gtefield" {
-						errors = append(errors, "Due date must be greater than or equal to start date")
-					}
-				default:
-					errors = append(errors, e.Translate(trans))
-				}
+				// You can customize error messages here as in CreateTask
+				errors = append(errors, e.Translate(trans))
 			}
 			c.JSON(http.StatusBadRequest, gin.H{"errors": errors})
 			return
@@ -241,7 +251,121 @@ func UpdateTask(c *gin.Context) {
 		return
 	}
 
-	database.DB.Model(&task).Updates(input)
+	// Validate TaskTypeID, if provided
+	if input.TaskTypeID != 0 {
+		var taskType models.TaskType
+		if err := database.DB.First(&taskType, input.TaskTypeID).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"errors": []string{"Invalid task type ID"}})
+			return
+		}
+	}
+
+	// Validate AssignedToUsers, if provided
+	if input.AssignedToUsers != nil {
+		for _, userID := range input.AssignedToUsers {
+			var user models.User
+			if err := database.DB.First(&user, userID).Error; err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"errors": []string{fmt.Sprintf("User with ID %d not found", userID)}})
+				return
+			}
+		}
+	}
+
+	// Validate AssignedToGroups, if provided
+	if input.AssignedToGroups != nil {
+		for _, groupID := range input.AssignedToGroups {
+			var group models.Group
+			if err := database.DB.First(&group, groupID).Error; err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"errors": []string{fmt.Sprintf("Group with ID %d not found", groupID)}})
+				return
+			}
+		}
+	}
+
+	// Validate FollowUpUsers, if provided
+	if input.FollowUpUsers != nil {
+		for _, userID := range input.FollowUpUsers {
+			var user models.User
+			if err := database.DB.First(&user, userID).Error; err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"errors": []string{fmt.Sprintf("Follow-up user with ID %d not found", userID)}})
+				return
+			}
+		}
+	}
+
+	// Using a transaction to ensure atomicity
+	tx := database.DB.Begin()
+
+	// Update task fields
+	if err := tx.Model(&task).Updates(models.Task{
+		Label:       input.Label,
+		TaskTypeID:  input.TaskTypeID,
+		Priority:    input.Priority,
+		StartDate:   input.StartDate.Time,
+		DueDate:     &input.DueDate.Time,
+		Description: input.Description,
+		Attachment:  input.Attachment,
+		Status:      input.Status,
+	}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update task"})
+		return
+	}
+
+	// Update associations
+	if input.AssignedToUsers != nil {
+		if err := tx.Where("task_id = ?", task.ID).Delete(&models.AssignTaskToUser{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update assigned users"})
+			return
+		}
+		for _, userID := range input.AssignedToUsers {
+			assignToUser := models.AssignTaskToUser{TaskID: task.ID, UserID: userID}
+			if err := tx.Create(&assignToUser).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign task to user"})
+				return
+			}
+		}
+	}
+
+	if input.AssignedToGroups != nil {
+		if err := tx.Where("task_id = ?", task.ID).Delete(&models.AssignTaskToGroup{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update assigned groups"})
+			return
+		}
+		for _, groupID := range input.AssignedToGroups {
+			assignToGroup := models.AssignTaskToGroup{TaskID: task.ID, GroupID: groupID}
+			if err := tx.Create(&assignToGroup).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign task to group"})
+				return
+			}
+		}
+	}
+
+	if input.FollowUpUsers != nil {
+		if err := tx.Where("task_id = ?", task.ID).Delete(&models.TaskFollowupUser{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update follow-up users"})
+			return
+		}
+		for _, userID := range input.FollowUpUsers {
+			followUpUser := models.TaskFollowupUser{TaskID: task.ID, UserID: userID}
+			if err := tx.Create(&followUpUser).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign task to follow-up user"})
+				return
+			}
+		}
+	}
+
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"data": task})
 }
@@ -251,12 +375,64 @@ func DeleteTask(c *gin.Context) {
 	id := c.Param("id")
 	var task models.Task
 
-	if err := database.DB.Where("id = ?", id).First(&task).Error; err != nil {
+	if err := database.DB.First(&task, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"errors": []string{"Task not found"}})
 		return
 	}
 
-	database.DB.Delete(&task)
+	// Authorization check
+	authUserID := uint(c.MustGet("user_id").(float64))
+	if task.CreatedBy != authUserID {
+		c.JSON(http.StatusForbidden, gin.H{"errors": []string{"You are not authorized to delete this task"}})
+		return
+	}
+
+	// Using a transaction to ensure atomicity
+	tx := database.DB.Begin()
+
+	// Delete associations
+	if err := tx.Where("task_id = ?", task.ID).Delete(&models.AssignTaskToUser{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task associations"})
+		return
+	}
+	if err := tx.Where("task_id = ?", task.ID).Delete(&models.AssignTaskToGroup{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task associations"})
+		return
+	}
+	if err := tx.Where("task_id = ?", task.ID).Delete(&models.TaskFollowupUser{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task associations"})
+		return
+	}
+	if err := tx.Where("task_id = ?", task.ID).Delete(&models.TaskStatusUpdateLog{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task associations"})
+		return
+	}
+	if err := tx.Where("task_id = ?", task.ID).Delete(&models.TaskCommentLog{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task associations"})
+		return
+	}
+	if err := tx.Where("task_id = ?", task.ID).Delete(&models.TaskSeenByUser{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task associations"})
+		return
+	}
+
+	// Delete the task itself
+	if err := tx.Delete(&task).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task"})
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Task deleted successfully"})
 }
