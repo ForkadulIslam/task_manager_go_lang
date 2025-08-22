@@ -5,4 +5,5 @@ type AssignTaskToUser struct {
 	ID     uint `gorm:"primaryKey"`
 	UserID uint `gorm:"not null"` // FK to users.id
 	TaskID uint `gorm:"not null"` // FK to tasks.id
+	User   User // Belongs to User
 }
