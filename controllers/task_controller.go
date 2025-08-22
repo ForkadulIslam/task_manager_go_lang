@@ -28,14 +28,16 @@ type CreateTaskInput struct {
 }
 
 type UpdateTaskInput struct {
-	Label       string      `json:"label" binding:"min=3,max=255"`
-	TaskTypeID  uint        `json:"task_type_id" binding:"gt=0"`
-	Priority    string      `json:"priority" binding:"oneof=Normal Medium High Escalation"`
-	StartDate   utils.Date  `json:"start_date" binding:"required"`
-	DueDate     *utils.Date `json:"due_date" binding:"omitempty,gtefield=StartDate"`
-	Description string      `json:"description"`
-	Attachment  string      `json:"attachment"`
-	Status      string      `json:"status"`
+	Label            string      `json:"label" binding:"min=3,max=255"`
+	TaskTypeID       uint        `json:"task_type_id" binding:"gt=0"`
+	Priority         string      `json:"priority" binding:"oneof=Normal Medium High Escalation"`
+	StartDate        utils.Date  `json:"start_date" binding:"required"`
+	DueDate          *utils.Date `json:"due_date" binding:"omitempty,gtefield=StartDate"`
+	Description      string      `json:"description"`
+	Attachment       string      `json:"attachment"`
+	Status           string      `json:"status"`
+	AssignedToUsers  []uint      `json:"assigned_to_users" binding:"omitempty,dive,gt=0"`
+	AssignedToGroups []uint      `json:"assigned_to_groups" binding:"omitempty,dive,gt=0"`
 }
 
 // CreateTask creates a new task
@@ -134,7 +136,7 @@ func CreateTask(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
 		return
 	}
-	
+
 	// Assign task to users
 	for _, userID := range input.AssignedToUsers {
 		assignToUser := models.AssignTaskToUser{
