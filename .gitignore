@@ -1,6 +1,3 @@
 # Temporary files and logs
 tmp/
-error_logs.txt
-requirements.md
-go.mod
 uploads/

@@ -18,4 +18,6 @@ type Task struct {
 	UpdatedAt   time.Time `gorm:"type:timestamp;autoUpdateTime"`
 	AssignedUsers []AssignTaskToUser `gorm:"foreignKey:TaskID"` // One-to-Many relationship
 	AssignedGroups []AssignTaskToGroup `gorm:"foreignKey:TaskID"` // One-to-Many relationship
+	FollowupUsers []TaskFollowupUser `gorm:"foreignKey:TaskID"` // One-to-Many relationship
+	Comments      []TaskCommentLog   `gorm:"foreignKey:TaskID"`
 }

@@ -10,4 +10,5 @@ type TaskFollowupUser struct {
 	Remarks   string    `gorm:"type:text;nullable"`
 	CreatedAt time.Time `gorm:"type:timestamp;autoCreateTime"`
 	UpdatedAt time.Time `gorm:"type:timestamp;autoUpdateTime"`
+	User      User      `gorm:"foreignKey:UserID"`
 }

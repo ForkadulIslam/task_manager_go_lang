@@ -35,6 +35,8 @@ func SetupRoutes(r *gin.Engine) {
 		auth.GET("/tasks/:id", controllers.GetTaskByID)
 		auth.PUT("/tasks/:id", controllers.UpdateTask)
 		auth.DELETE("/tasks/:id", controllers.DeleteTask)
+		auth.POST("/tasks/:id/status", controllers.UpdateTaskStatus)
+		auth.POST("/tasks/:id/comments", controllers.AddTaskComment)
 
 		// UserGroup routes
 		auth.POST("/user-groups", controllers.AddUserToGroup)

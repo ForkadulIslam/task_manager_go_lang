@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"strings"
 	"time"
@@ -14,9 +15,9 @@ type Date struct {
 // UnmarshalJSON implements the json.Unmarshaler interface.
 // It handles parsing of date strings.
 func (d *Date) UnmarshalJSON(data []byte) error {
-	s := strings.Trim(string(data), `"`) // Note: The original_old_string had `"` which is equivalent to `"` in Go. The corrected_old_string has `"` which is also equivalent to `"`. The original_new_string has `"` which is also equivalent to `"`. No change needed here.
+	s := strings.Trim(string(data), `"`)
 	if s == "" || s == "null" {
-		d.Time = time.Time{} // This line was added in original_new_string.
+		d.Time = time.Time{}
 		return nil
 	}
 
@@ -25,6 +26,30 @@ func (d *Date) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("invalid date format: %v", err)
 	}
 
+	d.Time = t
+	return nil
+}
+
+// Value implements the driver.Valuer interface.
+// This method is called by GORM when writing to the database.
+func (d Date) Value() (driver.Value, error) {
+	if d.IsZero() {
+		return nil, nil
+	}
+	return d.Time, nil
+}
+
+// Scan implements the sql.Scanner interface.
+// This method is called by GORM when reading from the database.
+func (d *Date) Scan(value interface{}) error {
+	if value == nil {
+		d.Time = time.Time{}
+		return nil
+	}
+	t, ok := value.(time.Time)
+	if !ok {
+		return fmt.Errorf("cannot scan type %T into Date", value)
+	}
 	d.Time = t
 	return nil
 }
