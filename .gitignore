@@ -1,3 +1,6 @@
 # Temporary files and logs
 tmp/
 uploads/
+
+# Frontend dependencies
+/frontend/node_modules/
