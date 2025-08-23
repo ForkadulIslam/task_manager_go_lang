@@ -1,0 +1,63 @@
+"/users" endpoint result:
+{
+    "data": [
+        {
+            "id": 16,
+            "username": "Fuad",
+            "status": 1,
+            "user_label": 2,
+            "created_at": "2025-08-21T00:15:47+06:00",
+            "updated_at": "2025-08-21T00:15:47+06:00"
+        }
+    ]
+}
+
+"/groups" Endpoint Results:
+{
+    "data": [
+        {
+            "id": 1,
+            "label": "Softwere development",
+            "created_by": 1,
+            "created_at": "2025-08-21T00:27:28+06:00",
+            "updated_at": "2025-08-21T00:27:28+06:00",
+            "users": [
+                {
+                    "id": 16,
+                    "username": "Fuad",
+                    "status": 1,
+                    "user_label": 2
+                },
+                {
+                    "id": 16,
+                    "username": "Fuad",
+                    "status": 1,
+                    "user_label": 2
+                }
+            ]
+        },
+        {
+            "id": 4,
+            "label": "Merketing",
+            "created_by": 1,
+            "created_at": "2025-08-21T00:27:52+06:00",
+            "updated_at": "2025-08-21T00:27:52+06:00",
+            "users": null
+        },
+        {
+            "id": 6,
+            "label": "Accounting",
+            "created_by": 1,
+            "created_at": "2025-08-21T18:23:57+06:00",
+            "updated_at": "2025-08-21T18:23:57+06:00",
+            "users": [
+                {
+                    "id": 16,
+                    "username": "Fuad",
+                    "status": 1,
+                    "user_label": 2
+                }
+            ]
+        }
+    ]
+}

@@ -29,6 +29,9 @@ func SetupRoutes(r *gin.Engine) {
 		auth.PUT("/task-types/:id", controllers.UpdateTaskType)
 		auth.DELETE("/task-types/:id", controllers.DeleteTaskType)
 
+		// User routes
+		auth.GET("/users", controllers.GetUsers)
+
 		// Task routes
 		auth.POST("/tasks", controllers.CreateTask)
 		auth.GET("/tasks", controllers.GetTasks)

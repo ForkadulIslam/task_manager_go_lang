@@ -55,7 +55,9 @@
     <!-- Modals -->
     <Modal :show="showCreateModal" @close="showCreateModal = false">
       <template #header><h2>Create New Task</h2></template>
-      <template #body><p>Form for creating a new task will go here.</p></template>
+      <template #body>
+        <CreateTaskForm @submit="handleCreateTask" />
+      </template>
     </Modal>
 
     <Modal :show="showViewModal" @close="showViewModal = false">
@@ -75,6 +77,7 @@
 import { onMounted, ref } from 'vue';
 import { useTasksStore } from '../stores/tasks';
 import Modal from '../components/Modal.vue';
+import CreateTaskForm from '../components/CreateTaskForm.vue';
 
 const tasksStore = useTasksStore();
 
@@ -86,6 +89,17 @@ const selectedTask = ref(null);
 
 const openCreateModal = () => {
   showCreateModal.value = true;
+};
+
+const handleCreateTask = async (formData) => {
+  try {
+    await tasksStore.createTask(formData);
+    showCreateModal.value = false; // Close modal on success
+  } catch (error) {
+    console.error("Failed to create task from view:", error);
+    // Optionally, show an error message to the user
+    alert(error.message);
+  }
 };
 
 const openViewModal = (task) => {

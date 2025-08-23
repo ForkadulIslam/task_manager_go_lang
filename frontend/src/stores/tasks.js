@@ -21,10 +21,24 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
+  async function createTask(taskData) {
+    // Note: This function assumes taskData is already validated
+    try {
+      await apiClient.post('/tasks', taskData);
+      // Refresh the tasks list to show the new task
+      await fetchTasks(); 
+    } catch (e) {
+      console.error("Failed to create task:", e);
+      // Re-throw the error to be handled by the component
+      throw new Error('Task creation failed on the server.');
+    }
+  }
+
   return {
     tasks,
     isLoading,
     error,
     fetchTasks,
+    createTask,
   };
 });
