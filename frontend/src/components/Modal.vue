@@ -1,6 +1,6 @@
 <template>
-  <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60" @click.self="close">
-    <div class="bg-gray-800 rounded-lg shadow-lg w-full max-w-2xl border border-gray-700">
+  <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-8" @click.self="close">
+    <div class="bg-gray-800 rounded-lg shadow-lg w-full max-w-3xl border border-gray-700 max-h-full overflow-y-auto">
       <header class="p-4 border-b border-gray-700 flex justify-between items-center">
         <slot name="header">
           <h2 class="text-xl font-bold">Modal Title</h2>

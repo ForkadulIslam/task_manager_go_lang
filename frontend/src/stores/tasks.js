@@ -34,11 +34,27 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
+  async function fetchTaskById(id) {
+    isLoading.value = true; // Use the same loading state for simplicity
+    error.value = null;
+    try {
+      const response = await apiClient.get(`/tasks/${id}`);
+      return response.data.data; // Return the full task object
+    } catch (e) {
+      error.value = `Failed to fetch task with ID ${id}.`;
+      console.error(e);
+      throw e; // Re-throw to allow component to handle
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   return {
     tasks,
     isLoading,
     error,
     fetchTasks,
     createTask,
+    fetchTaskById, // Add this
   };
 });

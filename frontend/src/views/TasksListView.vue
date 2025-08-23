@@ -44,7 +44,7 @@
             </td>
             <td class="p-4 text-gray-400">{{ formatDate(task.DueDate) }}</td>
             <td class="p-4 space-x-2">
-              <button @click="openViewModal(task)" class="bg-gray-600 hover:bg-gray-500 text-white py-1 px-3 rounded-lg text-sm transition-colors">View</button>
+              <button @click="openViewModal(task.ID)" class="bg-gray-600 hover:bg-gray-500 text-white py-1 px-3 rounded-lg text-sm transition-colors">View</button>
               <button @click="openUpdateModal(task)" class="bg-blue-600 hover:bg-blue-500 text-white py-1 px-3 rounded-lg text-sm transition-colors">Edit</button>
             </td>
           </tr>
@@ -62,7 +62,9 @@
 
     <Modal :show="showViewModal" @close="showViewModal = false">
       <template #header><h2>Task Details</h2></template>
-      <template #body><p>Details for task "{{ selectedTask?.Label }}" will go here.</p></template>
+      <template #body>
+        <TaskDetailsView :task="selectedTask" @commentSubmitted="handleCommentSubmitted" />
+      </template>
     </Modal>
 
     <Modal :show="showUpdateModal" @close="showUpdateModal = false">
@@ -78,6 +80,7 @@ import { onMounted, ref } from 'vue';
 import { useTasksStore } from '../stores/tasks';
 import Modal from '../components/Modal.vue';
 import CreateTaskForm from '../components/CreateTaskForm.vue';
+import TaskDetailsView from '../components/TaskDetailsView.vue';
 
 const tasksStore = useTasksStore();
 
@@ -102,14 +105,42 @@ const handleCreateTask = async (formData) => {
   }
 };
 
-const openViewModal = (task) => {
-  selectedTask.value = task;
-  showViewModal.value = true;
+const openViewModal = async (taskId) => {
+  const taskFromList = tasksStore.tasks.find(t => t.ID === taskId);
+  if (taskFromList) {
+    selectedTask.value = taskFromList; // Set to partial task from list
+  } else {
+    selectedTask.value = { ID: taskId, Label: 'Loading...' }; // Or a minimal placeholder
+  }
+
+  showViewModal.value = true; // Open modal
+
+  try {
+    const fullTask = await tasksStore.fetchTaskById(taskId);
+    selectedTask.value = fullTask; // Update with full task
+  } catch (error) {
+    console.error("Failed to fetch full task details:", error);
+    alert("Failed to load task details. Please try again.");
+    showViewModal.value = false; // Close modal on error
+  }
 };
 
 const openUpdateModal = (task) => {
   selectedTask.value = task;
   showUpdateModal.value = true;
+};
+
+const handleCommentSubmitted = async () => {
+  // Re-fetch the full task details to update comments
+  if (selectedTask.value && selectedTask.value.ID) {
+    try {
+      const fullTask = await tasksStore.fetchTaskById(selectedTask.value.ID);
+      selectedTask.value = fullTask;
+    } catch (error) {
+      console.error("Failed to re-fetch task details after comment submission:", error);
+      // Handle error, maybe keep the old comments or show a message
+    }
+  }
 };
 
 onMounted(() => {

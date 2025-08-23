@@ -1,63 +1,115 @@
-"/users" endpoint result:
 {
-    "data": [
-        {
-            "id": 16,
-            "username": "Fuad",
-            "status": 1,
-            "user_label": 2,
-            "created_at": "2025-08-21T00:15:47+06:00",
-            "updated_at": "2025-08-21T00:15:47+06:00"
-        }
-    ]
-}
-
-"/groups" Endpoint Results:
-{
-    "data": [
-        {
-            "id": 1,
-            "label": "Softwere development",
-            "created_by": 1,
-            "created_at": "2025-08-21T00:27:28+06:00",
-            "updated_at": "2025-08-21T00:27:28+06:00",
-            "users": [
-                {
+    "data": {
+        "ID": 52,
+        "Label": "New task with assigned and followup user after for testing",
+        "TaskTypeID": 2,
+        "Priority": "Normal",
+        "StartDate": "2025-08-22T00:00:00+06:00",
+        "DueDate": "2025-08-22T00:00:00+06:00",
+        "Description": "Details of the task story...",
+        "Attachment": "uploads\\1755808034562333000-forkadul_islam_fuad.pdf",
+        "Status": "Pending",
+        "CreatedBy": 16,
+        "CreatedAt": "2025-08-23T17:10:58+06:00",
+        "UpdatedAt": "2025-08-23T17:10:58+06:00",
+        "AssignedUsers": [
+            {
+                "ID": 13,
+                "UserID": 16,
+                "TaskID": 52,
+                "User": {
                     "id": 16,
                     "username": "Fuad",
                     "status": 1,
-                    "user_label": 2
-                },
-                {
-                    "id": 16,
-                    "username": "Fuad",
-                    "status": 1,
-                    "user_label": 2
+                    "user_label": 2,
+                    "created_at": "2025-08-21T00:15:47+06:00",
+                    "updated_at": "2025-08-21T00:15:47+06:00"
                 }
-            ]
-        },
-        {
-            "id": 4,
-            "label": "Merketing",
-            "created_by": 1,
-            "created_at": "2025-08-21T00:27:52+06:00",
-            "updated_at": "2025-08-21T00:27:52+06:00",
-            "users": null
-        },
-        {
-            "id": 6,
-            "label": "Accounting",
-            "created_by": 1,
-            "created_at": "2025-08-21T18:23:57+06:00",
-            "updated_at": "2025-08-21T18:23:57+06:00",
-            "users": [
-                {
+            }
+        ],
+        "AssignedGroups": [
+            {
+                "ID": 13,
+                "GroupID": 17,
+                "TaskID": 52,
+                "Group": {
+                    "id": 17,
+                    "label": "Softwere developments by hridoy",
+                    "CreatedBy": 18,
+                    "created_at": "2025-08-21T23:27:36+06:00",
+                    "updated_at": "2025-08-21T23:27:36+06:00",
+                    "users": [
+                        {
+                            "id": 16,
+                            "username": "Fuad",
+                            "status": 1,
+                            "user_label": 2,
+                            "created_at": "2025-08-21T00:15:47+06:00",
+                            "updated_at": "2025-08-21T00:15:47+06:00"
+                        },
+                        {
+                            "id": 18,
+                            "username": "Hridoy",
+                            "status": 1,
+                            "user_label": 2,
+                            "created_at": "2025-08-21T18:41:12+06:00",
+                            "updated_at": "2025-08-21T18:41:12+06:00"
+                        }
+                    ]
+                }
+            }
+        ],
+        "FollowupUsers": [
+            {
+                "ID": 13,
+                "UserID": 16,
+                "TaskID": 52,
+                "Remarks": "",
+                "CreatedAt": "2025-08-23T17:10:58+06:00",
+                "UpdatedAt": "2025-08-23T17:10:58+06:00",
+                "User": {
                     "id": 16,
                     "username": "Fuad",
                     "status": 1,
-                    "user_label": 2
+                    "user_label": 2,
+                    "created_at": "2025-08-21T00:15:47+06:00",
+                    "updated_at": "2025-08-21T00:15:47+06:00"
                 }
-            ]
-        }
-    ]
+            },
+            {
+                "ID": 14,
+                "UserID": 18,
+                "TaskID": 52,
+                "Remarks": "",
+                "CreatedAt": "2025-08-23T17:10:58+06:00",
+                "UpdatedAt": "2025-08-23T17:10:58+06:00",
+                "User": {
+                    "id": 18,
+                    "username": "Hridoy",
+                    "status": 1,
+                    "user_label": 2,
+                    "created_at": "2025-08-21T18:41:12+06:00",
+                    "updated_at": "2025-08-21T18:41:12+06:00"
+                }
+            }
+        ],
+        "Comments": [
+            {
+                "ID": 4,
+                "TaskID": 52,
+                "UserID": 16,
+                "Comment": "Test comment",
+                "CreatedAt": "2025-08-23T17:12:14+06:00",
+                "UpdatedAt": "2025-08-23T17:12:14+06:00",
+                "User": {
+                    "id": 16,
+                    "username": "Fuad",
+                    "status": 1,
+                    "user_label": 2,
+                    "created_at": "2025-08-21T00:15:47+06:00",
+                    "updated_at": "2025-08-21T00:15:47+06:00"
+                }
+            }
+        ]
+    }
 }

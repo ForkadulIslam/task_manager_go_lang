@@ -215,7 +215,7 @@ func GetTaskByID(c *gin.Context) {
 	id := c.Param("id")
 	var task models.Task
 
-	if err := database.DB.Preload("AssignedUsers.User").Preload("AssignedGroups.Group.Users").Preload("FollowupUsers.User").Preload("Comments.User").Where("id = ?", id).First(&task).Error; err != nil {
+	if err := database.DB.Preload("AssignedUsers.User").Preload("AssignedGroups.Group.Users").Preload("FollowupUsers.User").Preload("Comments.User").Preload("Creator").Where("id = ?", id).First(&task).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"errors": []string{"Task not found"}})
 		return
 	}
