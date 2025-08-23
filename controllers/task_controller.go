@@ -12,6 +12,7 @@ import (
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
+	"gorm.io/gorm"
 )
 
 type CreateTaskInput struct {
@@ -40,6 +41,14 @@ type UpdateTaskInput struct {
 	AssignedToUsers  []uint      `json:"assigned_to_users" binding:"omitempty,dive,gt=0"`
 	AssignedToGroups []uint      `json:"assigned_to_groups" binding:"omitempty,dive,gt=0"`
 	FollowUpUsers    []uint      `json:"follow_up_users" binding:"omitempty,dive,gt=0"`
+}
+
+type UpdateTaskStatusInput struct {
+	Status string `json:"status" binding:"required,oneof=Pending 'In Progress' 'In Review' Completed"`
+}
+
+type AddTaskCommentInput struct {
+	Comment string `json:"comment" binding:"required"`
 }
 
 // CreateTask creates a new task
@@ -206,12 +215,37 @@ func GetTaskByID(c *gin.Context) {
 	id := c.Param("id")
 	var task models.Task
 
-	if err := database.DB.Preload("AssignedUsers.User").Preload("AssignedGroups.Group.Users").Preload("FollowupUsers.User").Where("id = ?", id).First(&task).Error; err != nil {
+	if err := database.DB.Preload("AssignedUsers.User").Preload("AssignedGroups.Group.Users").Preload("FollowupUsers.User").Preload("Comments.User").Where("id = ?", id).First(&task).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"errors": []string{"Task not found"}})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": task})
+}
+
+// isUserAssigned checks if a user is assigned to a task, either directly or through a group
+func isUserAssigned(db *gorm.DB, userID uint, taskID uint) (bool, error) {
+	// Check for direct assignment
+	var directAssignment int64
+	err := db.Model(&models.AssignTaskToUser{}).Where("task_id = ? AND user_id = ?", taskID, userID).Count(&directAssignment).Error
+	if err != nil {
+		return false, err
+	}
+	if directAssignment > 0 {
+		return true, nil
+	}
+
+	// Check for group assignment
+	var groupAssignment int64
+	err = db.Model(&models.UserGroup{}).
+		Joins("JOIN assign_task_to_groups ON user_groups.group_id = assign_task_to_groups.group_id").
+		Where("assign_task_to_groups.task_id = ? AND user_groups.user_id = ?", taskID, userID).
+		Count(&groupAssignment).Error
+	if err != nil {
+		return false, err
+	}
+
+	return groupAssignment > 0, nil
 }
 
 // UpdateTask updates an existing task
@@ -368,6 +402,139 @@ func UpdateTask(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": task})
+}
+
+// UpdateTaskStatus updates the status of a task by an assigned user
+func UpdateTaskStatus(c *gin.Context) {
+	id := c.Param("id")
+	var task models.Task
+	if err := database.DB.First(&task, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"errors": []string{"Task not found"}})
+		return
+	}
+
+	authUserID := uint(c.MustGet("user_id").(float64))
+
+	// Authorization check
+	assigned, err := isUserAssigned(database.DB, authUserID, task.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check user assignment"})
+		return
+	}
+	if !assigned {
+		c.JSON(http.StatusForbidden, gin.H{"errors": []string{"You are not authorized to update the status of this task"}})
+		return
+	}
+
+	var input UpdateTaskStatusInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		var errors []string
+		if ve, ok := err.(validator.ValidationErrors); ok {
+			en := en.New()
+			uni := ut.New(en, en)
+			trans, _ := uni.GetTranslator("en")
+			_ = ve.Translate(trans)
+			for _, e := range ve {
+				errors = append(errors, e.Translate(trans))
+			}
+			c.JSON(http.StatusBadRequest, gin.H{"errors": errors})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"errors": []string{err.Error()}})
+		return
+	}
+
+	// Using a transaction to ensure atomicity
+	tx := database.DB.Begin()
+
+	// Update task status
+	if err := tx.Model(&task).Update("status", input.Status).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update task status"})
+		return
+	}
+
+	// Log the status update
+	statusLog := models.TaskStatusUpdateLog{
+		TaskID: task.ID,
+		UserID: authUserID,
+		Status: input.Status,
+	}
+	if err := tx.Create(&statusLog).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to log status update"})
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task status updated successfully"})
+}
+
+// isUserAssignedOrFollowup checks if a user is assigned to a task (directly or via group) or is a followup user.
+func isUserAssignedOrFollowup(db *gorm.DB, userID uint, taskID uint) (bool, error) {
+	// Check if assigned (directly or via group)
+	assigned, err := isUserAssigned(db, userID, taskID)
+	if err != nil {
+		return false, err
+	}
+	if assigned {
+		return true, nil
+	}
+
+	// Check for followup user assignment
+	var followupAssignment int64
+	err = db.Model(&models.TaskFollowupUser{}).Where("task_id = ? AND user_id = ?", taskID, userID).Count(&followupAssignment).Error
+	if err != nil {
+		return false, err
+	}
+
+	return followupAssignment > 0, nil
+}
+
+// AddTaskComment adds a comment to a task
+func AddTaskComment(c *gin.Context) {
+	id := c.Param("id")
+	var task models.Task
+	if err := database.DB.First(&task, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"errors": []string{"Task not found"}})
+		return
+	}
+
+	authUserID := uint(c.MustGet("user_id").(float64))
+
+	// Authorization check
+	allowed, err := isUserAssignedOrFollowup(database.DB, authUserID, task.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check user assignment"})
+		return
+	}
+	if !allowed {
+		c.JSON(http.StatusForbidden, gin.H{"errors": []string{"You are not authorized to comment on this task"}})
+		return
+	}
+
+	var input AddTaskCommentInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": []string{err.Error()}})
+		return
+	}
+
+	comment := models.TaskCommentLog{
+		TaskID:  task.ID,
+		UserID:  authUserID,
+		Comment: input.Comment,
+	}
+
+	if err := database.DB.Create(&comment).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add comment"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"data": comment})
 }
 
 // DeleteTask deletes a task
