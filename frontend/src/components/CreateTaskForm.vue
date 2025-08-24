@@ -84,7 +84,9 @@
 
       <!-- Submit Button -->
       <div class="pt-2">
-        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-colors">Create Task</button>
+        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-colors">
+          Create Task
+        </button>
       </div>
     </div>
   </form>
@@ -102,7 +104,7 @@ const emit = defineEmits(['submit']);
 
 const metaStore = useMetaStore();
 
-const form = reactive({
+const defaultFormState = {
   label: '',
   taskTypeId: '',
   priority: 'Normal',
@@ -115,7 +117,9 @@ const form = reactive({
   followUpGroups: [],
   attachment: null, // This will store the file object temporarily
   attachmentPath: '', // This will store the path returned by the backend
-});
+};
+
+const form = reactive({ ...defaultFormState });
 
 const rules = {
   label: { required, minLength: minLength(3) },
@@ -134,8 +138,8 @@ const rules = {
 
 const v$ = useVuelidate(rules, form);
 
-onMounted(() => {
-  metaStore.fetchMeta();
+onMounted(async () => {
+  await metaStore.fetchMeta(); // Ensure meta data is fetched
 });
 
 const uploadAttachment = async (file) => {
@@ -176,30 +180,19 @@ const handleSubmit = async () => {
   const isValid = await v$.value.$validate();
   if (!isValid) return;
 
-  // Combine followUpUsers and followUpGroups into a single array of user IDs
-  const combinedFollowUpUsers = [
-    ...form.followUpUsers.map(user => user.id),
-    ...form.followUpGroups.flatMap(group => group.users ? group.users.map(user => user.id) : []) // Assuming group.users is an array of user objects
-  ];
-
   const payload = {
-    ...form,
+    label: form.label,
     task_type_id: form.taskTypeId,
+    priority: form.priority,
     start_date: form.startDate,
-    due_date: form.dueDate || null, // Send null if due date is empty
+    due_date: form.dueDate || null,
+    description: form.description,
+    attachment: form.attachmentPath,
     assigned_to_users: form.assignedToUsers.map(user => user.id),
     assigned_to_groups: form.assignedToGroups.map(group => group.id),
-    follow_up_users: combinedFollowUpUsers,
-    attachment: form.attachmentPath, // Send the path returned by the backend
+    follow_up_users: form.followUpUsers.map(user => user.id),
+    follow_up_groups: form.followUpGroups.map(group => group.id),
   };
-  
-  delete payload.taskTypeId;
-  delete payload.assignedToUsers;
-  delete payload.assignedToGroups;
-  delete payload.followUpUsers;
-  delete payload.followUpGroups;
-  delete payload.attachment; // Remove the File object itself from the final payload
-  delete payload.attachmentPath; // Remove the temporary path from the final payload
 
   emit('submit', payload);
 };

@@ -1,22 +1,30 @@
 {
     "data": {
-        "ID": 52,
-        "Label": "New task with assigned and followup user after for testing",
-        "TaskTypeID": 2,
-        "Priority": "Normal",
-        "StartDate": "2025-08-22T00:00:00+06:00",
-        "DueDate": "2025-08-22T00:00:00+06:00",
-        "Description": "Details of the task story...",
-        "Attachment": "uploads\\1755808034562333000-forkadul_islam_fuad.pdf",
+        "ID": 61,
+        "Label": "Test from the web",
+        "TaskTypeID": 3,
+        "Priority": "Medium",
+        "StartDate": "2025-08-24T00:00:00+06:00",
+        "DueDate": "2025-08-24T00:00:00+06:00",
+        "Description": "ddd",
+        "Attachment": "",
         "Status": "Pending",
-        "CreatedBy": 16,
-        "CreatedAt": "2025-08-23T17:10:58+06:00",
-        "UpdatedAt": "2025-08-23T17:10:58+06:00",
+        "CreatedBy": 18,
+        "Creator": {
+            "id": 18,
+            "username": "Hridoy",
+            "status": 1,
+            "user_label": 2,
+            "created_at": "2025-08-21T18:41:12+06:00",
+            "updated_at": "2025-08-21T18:41:12+06:00"
+        },
+        "CreatedAt": "2025-08-24T15:28:43+06:00",
+        "UpdatedAt": "2025-08-24T15:28:43+06:00",
         "AssignedUsers": [
             {
-                "ID": 13,
+                "ID": 23,
                 "UserID": 16,
-                "TaskID": 52,
+                "TaskID": 61,
                 "User": {
                     "id": 16,
                     "username": "Fuad",
@@ -29,15 +37,15 @@
         ],
         "AssignedGroups": [
             {
-                "ID": 13,
-                "GroupID": 17,
-                "TaskID": 52,
+                "ID": 21,
+                "GroupID": 6,
+                "TaskID": 61,
                 "Group": {
-                    "id": 17,
-                    "label": "Softwere developments by hridoy",
-                    "CreatedBy": 18,
-                    "created_at": "2025-08-21T23:27:36+06:00",
-                    "updated_at": "2025-08-21T23:27:36+06:00",
+                    "id": 6,
+                    "label": "Accounting",
+                    "CreatedBy": 1,
+                    "created_at": "2025-08-21T18:23:57+06:00",
+                    "updated_at": "2025-08-21T18:23:57+06:00",
                     "users": [
                         {
                             "id": 16,
@@ -61,28 +69,12 @@
         ],
         "FollowupUsers": [
             {
-                "ID": 13,
-                "UserID": 16,
-                "TaskID": 52,
-                "Remarks": "",
-                "CreatedAt": "2025-08-23T17:10:58+06:00",
-                "UpdatedAt": "2025-08-23T17:10:58+06:00",
-                "User": {
-                    "id": 16,
-                    "username": "Fuad",
-                    "status": 1,
-                    "user_label": 2,
-                    "created_at": "2025-08-21T00:15:47+06:00",
-                    "updated_at": "2025-08-21T00:15:47+06:00"
-                }
-            },
-            {
-                "ID": 14,
+                "ID": 27,
                 "UserID": 18,
-                "TaskID": 52,
+                "TaskID": 61,
                 "Remarks": "",
-                "CreatedAt": "2025-08-23T17:10:58+06:00",
-                "UpdatedAt": "2025-08-23T17:10:58+06:00",
+                "CreatedAt": "2025-08-24T15:28:43+06:00",
+                "UpdatedAt": "2025-08-24T15:28:43+06:00",
                 "User": {
                     "id": 18,
                     "username": "Hridoy",
@@ -93,23 +85,50 @@
                 }
             }
         ],
-        "Comments": [
+        "FollowupGroups": [
             {
-                "ID": 4,
-                "TaskID": 52,
-                "UserID": 16,
-                "Comment": "Test comment",
-                "CreatedAt": "2025-08-23T17:12:14+06:00",
-                "UpdatedAt": "2025-08-23T17:12:14+06:00",
-                "User": {
-                    "id": 16,
-                    "username": "Fuad",
-                    "status": 1,
-                    "user_label": 2,
-                    "created_at": "2025-08-21T00:15:47+06:00",
-                    "updated_at": "2025-08-21T00:15:47+06:00"
+                "ID": 2,
+                "GroupID": 6,
+                "TaskID": 61,
+                "Group": {
+                    "id": 6,
+                    "label": "Accounting",
+                    "CreatedBy": 1,
+                    "created_at": "2025-08-21T18:23:57+06:00",
+                    "updated_at": "2025-08-21T18:23:57+06:00",
+                    "users": [
+                        {
+                            "id": 16,
+                            "username": "Fuad",
+                            "status": 1,
+                            "user_label": 2,
+                            "created_at": "2025-08-21T00:15:47+06:00",
+                            "updated_at": "2025-08-21T00:15:47+06:00"
+                        },
+                        {
+                            "id": 18,
+                            "username": "Hridoy",
+                            "status": 1,
+                            "user_label": 2,
+                            "created_at": "2025-08-21T18:41:12+06:00",
+                            "updated_at": "2025-08-21T18:41:12+06:00"
+                        }
+                    ]
                 }
             }
-        ]
+        ],
+        "Comments": []
     }
 }
+
+
+Error:
+[vue/compiler-sfc] Identifier 'getUniqueUsernames' has already been declared. (54:6)
+
+D:/app_development/taskmanager_golang/frontend/src/components/TaskDetailsView.vue
+193|  };
+194|  
+195|  const getUniqueUsernames = (users) => {
+   |        ^
+196|    if (!users || !users.length) return '';
+197|    const uniqueUsers = [...new Map(users.map(user => [user.id, user])).values()];

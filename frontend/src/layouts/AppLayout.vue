@@ -18,7 +18,7 @@
       <!-- Header -->
       <header class="bg-gray-800 border-b border-gray-700 p-4 flex justify-end">
         <div>
-          <span class="mr-4">Welcome, User!</span>
+          <span class="mr-4">Welcome, {{ authStore.user?.username }}!</span>
           <button @click="handleLogout" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition-colors">Logout</button>
         </div>
       </header>

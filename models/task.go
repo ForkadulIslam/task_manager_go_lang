@@ -20,5 +20,6 @@ type Task struct {
 	AssignedUsers []AssignTaskToUser `gorm:"foreignKey:TaskID"` // One-to-Many relationship
 	AssignedGroups []AssignTaskToGroup `gorm:"foreignKey:TaskID"` // One-to-Many relationship
 	FollowupUsers []TaskFollowupUser `gorm:"foreignKey:TaskID"` // One-to-Many relationship
+	FollowupGroups []TaskFollowupGroup `gorm:"foreignKey:TaskID" json:"FollowupGroups"` // One-to-Many relationship
 	Comments      []TaskCommentLog   `gorm:"foreignKey:TaskID"`
 }

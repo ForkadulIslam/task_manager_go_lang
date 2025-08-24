@@ -27,6 +27,7 @@ type CreateTaskInput struct {
 	AssignedToUsers  []uint      `json:"assigned_to_users" binding:"omitempty,dive,gt=0"`
 	AssignedToGroups []uint      `json:"assigned_to_groups" binding:"omitempty,dive,gt=0"`
 	FollowUpUsers    []uint      `json:"follow_up_users" binding:"omitempty,dive,gt=0"`
+	FollowUpGroups   []uint      `json:"follow_up_groups" binding:"omitempty,dive,gt=0"`
 }
 
 type UpdateTaskInput struct {
@@ -41,6 +42,7 @@ type UpdateTaskInput struct {
 	AssignedToUsers  []uint      `json:"assigned_to_users" binding:"omitempty,dive,gt=0"`
 	AssignedToGroups []uint      `json:"assigned_to_groups" binding:"omitempty,dive,gt=0"`
 	FollowUpUsers    []uint      `json:"follow_up_users" binding:"omitempty,dive,gt=0"`
+	FollowUpGroups   []uint      `json:"follow_up_groups" binding:"omitempty,dive,gt=0"`
 }
 
 type UpdateTaskStatusInput struct {
@@ -137,6 +139,15 @@ func CreateTask(c *gin.Context) {
 		}
 	}
 
+	// Validate FollowUpGroups
+	for _, groupID := range input.FollowUpGroups {
+		var group models.Group
+		if err := database.DB.First(&group, groupID).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"errors": []string{fmt.Sprintf("Follow-up group with ID %d not found", groupID)}})
+			return
+		}
+	}
+
 	task := models.Task{
 		Label:       input.Label,
 		TaskTypeID:  input.TaskTypeID,
@@ -196,13 +207,26 @@ func CreateTask(c *gin.Context) {
 		}
 	}
 
+	// Assign task to follow-up groups
+	for _, groupID := range input.FollowUpGroups {
+		followUpGroup := models.TaskFollowupGroup{
+			TaskID:  task.ID,
+			GroupID: groupID,
+		}
+		if err := database.DB.Create(&followUpGroup).Error; err != nil {
+			// Handle error, perhaps rollback task creation or log it
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign task to follow-up group"})
+			return
+		}
+	}
+
 	c.JSON(http.StatusCreated, gin.H{"data": task})
 }
 
 // GetTasks retrieves all tasks
 func GetTasks(c *gin.Context) {
 	var tasks []models.Task
-	if err := database.DB.Preload("AssignedUsers.User").Preload("AssignedGroups.Group.Users").Preload("FollowupUsers.User").Find(&tasks).Error; err != nil {
+	if err := database.DB.Preload("AssignedUsers.User").Preload("AssignedGroups.Group.Users").Preload("FollowupUsers.User").Preload("FollowupGroups.Group.Users").Find(&tasks).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tasks"})
 		return
 	}
@@ -215,7 +239,7 @@ func GetTaskByID(c *gin.Context) {
 	id := c.Param("id")
 	var task models.Task
 
-	if err := database.DB.Preload("AssignedUsers.User").Preload("AssignedGroups.Group.Users").Preload("FollowupUsers.User").Preload("Comments.User").Preload("Creator").Where("id = ?", id).First(&task).Error; err != nil {
+	if err := database.DB.Preload("AssignedUsers.User").Preload("AssignedGroups.Group.Users").Preload("FollowupUsers.User").Preload("FollowupGroups.Group.Users").Preload("Comments.User").Preload("Creator").Where("id = ?", id).First(&task).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"errors": []string{"Task not found"}})
 		return
 	}
@@ -327,6 +351,17 @@ func UpdateTask(c *gin.Context) {
 		}
 	}
 
+	// Validate FollowUpGroups, if provided
+	if input.FollowUpGroups != nil {
+		for _, groupID := range input.FollowUpGroups {
+			var group models.Group
+			if err := database.DB.First(&group, groupID).Error; err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"errors": []string{fmt.Sprintf("Follow-up group with ID %d not found", groupID)}})
+				return
+			}
+		}
+	}
+
 	// Using a transaction to ensure atomicity
 	tx := database.DB.Begin()
 
@@ -390,6 +425,22 @@ func UpdateTask(c *gin.Context) {
 			if err := tx.Create(&followUpUser).Error; err != nil {
 				tx.Rollback()
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign task to follow-up user"})
+				return
+			}
+		}
+	}
+
+	if input.FollowUpGroups != nil {
+		if err := tx.Where("task_id = ?", task.ID).Delete(&models.TaskFollowupGroup{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update follow-up groups"})
+			return
+		}
+		for _, groupID := range input.FollowUpGroups {
+			followUpGroup := models.TaskFollowupGroup{TaskID: task.ID, GroupID: groupID}
+			if err := tx.Create(&followUpGroup).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign task to follow-up group"})
 				return
 			}
 		}

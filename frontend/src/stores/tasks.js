@@ -34,6 +34,16 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
+  async function updateTask(taskId, taskData) {
+    try {
+      await apiClient.put(`/tasks/${taskId}`, taskData);
+      await fetchTasks(); // Re-fetch to update the list
+    } catch (e) {
+      console.error(`Failed to update task ${taskId}:`, e);
+      throw new Error('Task update failed on the server.');
+    }
+  }
+
   async function fetchTaskById(id) {
     isLoading.value = true; // Use the same loading state for simplicity
     error.value = null;
@@ -55,6 +65,7 @@ export const useTasksStore = defineStore('tasks', () => {
     error,
     fetchTasks,
     createTask,
-    fetchTaskById, // Add this
+    updateTask, // Add this
+    fetchTaskById,
   };
 });

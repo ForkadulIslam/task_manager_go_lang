@@ -1,9 +1,10 @@
 package routes
 
 import (
-	"github.com/gin-gonic/gin"
 	"taskmanager/controllers"
 	"taskmanager/middleware"
+
+	"github.com/gin-gonic/gin"
 )
 
 func SetupRoutes(r *gin.Engine) {
@@ -47,26 +48,8 @@ func SetupRoutes(r *gin.Engine) {
 		auth.DELETE("/user-groups/:id", controllers.RemoveUserFromGroup)
 		auth.GET("/user-groups/my-groups", controllers.GetGroupsForUser)
 
-		// AssignTaskToUser routes
-		auth.POST("/assign-task-to-user", controllers.AssignTaskToUser)
-		auth.DELETE("/assign-task-to-user/:id", controllers.RemoveTaskAssignmentFromUser)
-		auth.GET("/users/:user_id/assigned-tasks", controllers.GetTasksAssignedToUser)
-		auth.GET("/tasks/assigned-users/:task_id", controllers.GetUsersAssignedToTask)
-
-		// AssignTaskToGroup routes
-		auth.POST("/assign-task-to-group", controllers.AssignTaskToGroup)
-		auth.DELETE("/assign-task-to-group/:id", controllers.RemoveTaskAssignmentFromGroup)
-		auth.GET("/groups/assigned-tasks/:group_id", controllers.GetTasksAssignedToGroup)
-		auth.GET("/tasks/assigned-groups/:task_id", controllers.GetGroupsAssignedToTask)
-
-		// TaskFollowupUser routes
-		auth.POST("/task-followup-users", controllers.AddTaskFollowupUser)
-		auth.DELETE("/task-followup-users/:id", controllers.RemoveTaskFollowupUser)
-		auth.GET("/tasks/followup-users/:task_id", controllers.GetFollowupUsersForTask)
-
 		// Attachment upload route
 		auth.POST("/upload-attachment", controllers.UploadAttachment)
 	}
 
-	
 }

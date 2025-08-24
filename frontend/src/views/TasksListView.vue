@@ -45,7 +45,7 @@
             <td class="p-4 text-gray-400">{{ formatDate(task.DueDate) }}</td>
             <td class="p-4 space-x-2">
               <button @click="openViewModal(task.ID)" class="bg-gray-600 hover:bg-gray-500 text-white py-1 px-3 rounded-lg text-sm transition-colors">View</button>
-              <button @click="openUpdateModal(task)" class="bg-blue-600 hover:bg-blue-500 text-white py-1 px-3 rounded-lg text-sm transition-colors">Edit</button>
+              <button @click="openEditModal(task.ID)" class="bg-blue-600 hover:bg-blue-500 text-white py-1 px-3 rounded-lg text-sm transition-colors">Edit</button>
             </td>
           </tr>
         </tbody>
@@ -67,9 +67,14 @@
       </template>
     </Modal>
 
-    <Modal :show="showUpdateModal" @close="showUpdateModal = false">
-      <template #header><h2>Update Task</h2></template>
-      <template #body><p>Form for updating task "{{ selectedTask?.Label }}" will go here.</p></template>
+    <Modal :show="showEditModal" @close="showEditModal = false">
+      <template #header><h2>Edit Task</h2></template>
+      <template #body v-if="selectedTask">
+        <EditTaskForm 
+          :initialTaskData="selectedTask" 
+          @submit="handleUpdateTask" 
+        />
+      </template>
     </Modal>
 
   </div>
@@ -80,6 +85,7 @@ import { onMounted, ref } from 'vue';
 import { useTasksStore } from '../stores/tasks';
 import Modal from '../components/Modal.vue';
 import CreateTaskForm from '../components/CreateTaskForm.vue';
+import EditTaskForm from '../components/EditTaskForm.vue';
 import TaskDetailsView from '../components/TaskDetailsView.vue';
 
 const tasksStore = useTasksStore();
@@ -87,7 +93,7 @@ const tasksStore = useTasksStore();
 // Modal visibility state
 const showCreateModal = ref(false);
 const showViewModal = ref(false);
-const showUpdateModal = ref(false);
+const showEditModal = ref(false);
 const selectedTask = ref(null);
 
 const openCreateModal = () => {
@@ -125,9 +131,27 @@ const openViewModal = async (taskId) => {
   }
 };
 
-const openUpdateModal = (task) => {
-  selectedTask.value = task;
-  showUpdateModal.value = true;
+const openEditModal = async (taskId) => {
+  try {
+    const task = await tasksStore.fetchTaskById(taskId);
+    selectedTask.value = task;
+    showEditModal.value = true;
+  } catch (error) {
+    console.error("Failed to fetch task for editing:", error);
+    alert("Failed to load task for editing.");
+  }
+};
+
+const handleUpdateTask = async (formData) => {
+  if (!selectedTask.value) return;
+  try {
+    await tasksStore.updateTask(selectedTask.value.ID, formData);
+    showEditModal.value = false;
+    selectedTask.value = null;
+  } catch (error) {
+    console.error("Failed to update task:", error);
+    alert(error.message);
+  }
 };
 
 const handleCommentSubmitted = async () => {

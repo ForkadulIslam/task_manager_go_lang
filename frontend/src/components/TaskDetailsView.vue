@@ -4,13 +4,11 @@
     <div>
       <h3 class="text-lg font-bold text-white mb-2">{{ task.Label }}</h3>
       <!-- Creator Info -->
-      <div v-if="task.Creator && task.Creator.Username" class="flex items-center text-gray-400 text-xs mb-4">
-        <div class="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center text-white font-bold text-xxs mr-2">
-          {{ task.Creator.Username ? task.Creator.Username.substring(0, 2).toUpperCase() : '?' }}
-        </div>
-        <p>Created by <span class="font-semibold text-gray-300">{{ task.Creator.Username }}</span></p>
-        <span v-if="task.Creator.UserLabel" class="ml-2 px-2 py-0.5 rounded-full bg-gray-700 text-gray-300 text-xxs">
-          {{ task.Creator.UserLabel === 1 ? 'Super Admin' : 'User' }}
+      <div v-if="task.Creator && task.Creator.username" class="flex items-center text-gray-400 text-xs mb-4">
+        <UserAvatar :username="task.Creator.username" size="sm" class="mr-2" />
+        <p>Created by <span class="font-semibold text-gray-300">{{ task.Creator.username }}</span></p>
+        <span v-if="task.Creator.user_label" class="ml-2 px-2 py-0.5 rounded-full bg-gray-700 text-gray-300 text-xxs">
+          {{ task.Creator.user_label === 1 ? 'Super Admin' : 'User' }}
         </span>
       </div>
       <div class="grid grid-cols-2 gap-4 text-xs">
@@ -32,8 +30,6 @@
         </div>
       </div>
     </div>
-
-    
 
     <!-- Attachment -->
     <div v-if="task.Attachment">
@@ -61,7 +57,7 @@
         <span v-for="assignee in task.AssignedGroups" :key="assignee.ID" class="px-3 py-1 rounded-full bg-purple-800 text-purple-200 text-xs font-medium">
           {{ assignee.Group.label }}
           <span v-if="assignee.Group.users && assignee.Group.users.length" class="text-purple-400 ml-1">
-            ({{ assignee.Group.users.map(user => user.username).join(', ') }})
+            ({{ getUniqueUsernames(assignee.Group.users) }})
           </span>
         </span>
       </div>
@@ -73,6 +69,19 @@
       <div class="flex flex-wrap gap-2">
         <span v-for="followup in task.FollowupUsers" :key="followup.ID" class="px-3 py-1 rounded-full bg-emerald-800 text-emerald-200 text-xs font-medium">
           {{ followup.User.username }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Follow-up Groups -->
+    <div v-if="task.FollowupGroups && task.FollowupGroups.length">
+      <h4 class="font-semibold text-gray-300 mb-2 text-sm">Follow-up Groups:</h4>
+      <div class="flex flex-wrap gap-2">
+        <span v-for="followupGroup in task.FollowupGroups" :key="followupGroup.ID" class="px-3 py-1 rounded-full bg-teal-800 text-teal-200 text-xs font-medium">
+          {{ followupGroup.Group.label }}
+          <span v-if="followupGroup.Group.users && followupGroup.Group.users.length" class="text-teal-400 ml-1">
+            ({{ getUniqueUsernames(followupGroup.Group.users) }})
+          </span>
         </span>
       </div>
     </div>
@@ -89,9 +98,7 @@
       <div class="space-y-3 max-h-64 overflow-y-auto pr-2">
         <div v-for="comment in task.Comments" :key="comment.ID" class="bg-gray-700 p-3 rounded-md text-xs">
           <div class="flex items-center mb-2"> <!-- Added flex container -->
-            <div class="w-8 h-8 rounded-full bg-sky-600 flex items-center justify-center text-white font-bold text-xs mr-2"> <!-- Avatar -->
-              {{ comment.User.username.substring(0, 2).toUpperCase() }}
-            </div>
+            <UserAvatar :username="comment.User.username" size="md" class="mr-2" />
             <p class="font-semibold text-gray-300">{{ comment.User.username }} <span class="text-gray-500 text-xxs ml-2">{{ formatDate(comment.CreatedAt) }}</span></p>
           </div>
           <p class="mt-1 text-gray-200">{{ comment.Comment }}</p>
@@ -99,7 +106,7 @@
     </div>
       </div>
     <!-- Add Comment Section -->
-    <div class="bg-gray-800 p-4 rounded-md mb-4">
+    <div v-if="canComment" class="bg-gray-800 p-4 rounded-md mb-4">
       <h4 class="font-semibold text-gray-300 mb-2 pb-2 border-b border-gray-700 flex items-center text-sm">
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
         Add Comment:
@@ -119,6 +126,13 @@
         </button>
       </div>
     </div>
+
+    <!-- Edit Task Modal -->
+    <Modal :show="showEditModal" @close="showEditModal = false">
+      <h3 class="text-lg font-bold text-white mb-4">Edit Task</h3>
+      <!-- Placeholder for EditTaskForm -->
+      <p class="text-gray-300">Edit form will go here.</p>
+    </Modal>
   </div>
   <div v-else class="text-center text-gray-400">
     <p>No task selected or task data is missing.</p>
@@ -128,6 +142,12 @@
 <script setup>
 import { computed, ref } from 'vue';
 import apiClient from '../services/api'; // Import apiClient
+import UserAvatar from './UserAvatar.vue'; // Import UserAvatar component
+import Modal from './Modal.vue'; // Import Modal component
+import { useAuthStore } from '../stores/auth'; // Import useAuthStore
+
+const authStore = useAuthStore();
+const authUserID = computed(() => authStore.user?.id); // Safely get user ID
 
 const props = defineProps({
   task: {
@@ -166,6 +186,12 @@ const submitComment = async () => { // Make it async
   }
 };
 
+const getUniqueUsernames = (users) => {
+  if (!users || !users.length) return '';
+  const uniqueUsers = [...new Map(users.map(user => [user.id, user])).values()];
+  return uniqueUsers.map(user => user.username).join(', ');
+};
+
 const getPriorityClass = (priority) => {
   switch (priority) {
     case 'High': return 'bg-red-500/20 text-red-300';
@@ -199,4 +225,33 @@ const getAttachmentUrl = (path) => {
   // You might need to adjust this based on your backend's serving configuration
   return `http://localhost:8080/${path.replace(/\\/g, '/')}`;
 };
+
+const canComment = computed(() => {
+  if (!props.task || !authUserID.value) {
+    return false;
+  }
+
+  const currentUserID = authUserID.value;
+
+  // Check if assigned directly to user
+  if (props.task.AssignedUsers && props.task.AssignedUsers.some(au => au.UserID === currentUserID)) {
+    return true;
+  }
+
+  // Check if assigned via group
+  if (props.task.AssignedGroups) {
+    for (const ag of props.task.AssignedGroups) {
+      if (ag.Group && ag.Group.Users && ag.Group.Users.some(gu => gu.ID === currentUserID)) {
+        return true;
+      }
+    }
+  }
+
+  // Check if a follow-up user
+  if (props.task.FollowupUsers && props.task.FollowupUsers.some(fu => fu.UserID === currentUserID)) {
+    return true;
+  }
+
+  return false;
+});
 </script>

@@ -5,7 +5,7 @@
         <span class="block truncate">
           <span v-if="modelValue.length === 0" class="text-gray-400">Select items...</span>
           <span v-else class="flex flex-wrap gap-1">
-            <span v-for="item in modelValue" :key="item.ID" class="px-2 py-0.5 rounded-full text-xs font-medium bg-sky-800 text-sky-200">
+            <span v-for="item in modelValue" :key="item.id" class="px-2 py-0.5 rounded-full text-xs font-medium bg-sky-800 text-sky-200">
               {{ item[props.displayProperty] }}
             </span>
           </span>
@@ -22,7 +22,7 @@
           <div v-if="filteredItems.length === 0 && query !== ''" class="relative cursor-default select-none py-2 px-4 text-gray-400">
             Nothing found.
           </div>
-          <ComboboxOption v-for="item in filteredItems" :key="item.ID" :value="item" as="template" v-slot="{ active, selected }">
+          <ComboboxOption v-for="item in filteredItems" :key="item.id" :value="item" as="template" v-slot="{ active, selected }">
             <li :class="['relative cursor-default select-none py-2 pl-3 pr-9', active ? 'bg-sky-600 text-white' : 'text-gray-200']">
               <span :class="['block truncate', selected && 'font-semibold']">{{ item[props.displayProperty] }}</span>
               <span v-if="selected" :class="['absolute inset-y-0 right-0 flex items-center pr-4', active ? 'text-white' : 'text-sky-600']">
