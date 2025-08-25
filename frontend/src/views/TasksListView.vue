@@ -1,11 +1,16 @@
 <template>
   <div>
     <div class="flex justify-between items-center mb-6">
-      <h1 class="text-3xl font-bold text-white">Tasks</h1>
-      <button @click="openCreateModal" class="bg-sky-500 hover:bg-sky-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">
-        + New Task
+      <h1 class="text-3xl font-bold text-white">Generate Tasks</h1>
+      <button @click="openCreateModal" class="inline-flex items-center justify-center rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-gray-900">
+        <svg class="-ml-0.5 mr-1.5 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+        </svg>
+        New Task
       </button>
     </div>
+
+    
 
     <!-- Loading State -->
     <div v-if="tasksStore.isLoading" class="text-center text-gray-400">
@@ -18,38 +23,55 @@
     </div>
 
     <!-- Data Table -->
-    <div v-else class="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-      <table class="min-w-full text-left">
-        <thead class="bg-gray-700">
-          <tr>
-            <th class="p-4 font-semibold">Task</th>
-            <th class="p-4 font-semibold">Priority</th>
-            <th class="p-4 font-semibold">Status</th>
-            <th class="p-4 font-semibold">Due Date</th>
-            <th class="p-4 font-semibold">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="task in tasksStore.tasks" :key="task.ID" class="border-b border-gray-700 hover:bg-gray-700/50 transition-colors">
-            <td class="p-4">{{ task.Label }}</td>
-            <td class="p-4">
-              <span :class="getPriorityClass(task.Priority)" class="px-2 py-1 text-xs font-semibold rounded-full">
-                {{ task.Priority }}
-              </span>
-            </td>
-            <td class="p-4">
-              <span :class="getStatusClass(task.Status)" class="px-2 py-1 text-xs font-semibold rounded-full">
-                {{ task.Status }}
-              </span>
-            </td>
-            <td class="p-4 text-gray-400">{{ formatDate(task.DueDate) }}</td>
-            <td class="p-4 space-x-2">
-              <button @click="openViewModal(task.ID)" class="bg-gray-600 hover:bg-gray-500 text-white py-1 px-3 rounded-lg text-sm transition-colors">View</button>
-              <button @click="openEditModal(task.ID)" class="bg-blue-600 hover:bg-blue-500 text-white py-1 px-3 rounded-lg text-sm transition-colors">Edit</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div v-else class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+      <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+          <table class="min-w-full divide-y divide-gray-700">
+            <thead class="bg-gray-800">
+              <tr>
+                <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-white sm:pl-6">Task</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-white">Priority</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-white">Status</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-white">Due Date</th>
+                <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                  <span class="sr-only">Edit</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800 bg-gray-900">
+              <tr v-for="task in tasksStore.tasks" :key="task.ID" class="even:bg-gray-800/30 hover:bg-gray-800/50">
+                <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-white sm:pl-6">{{ task.Label }}</td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
+                  <span :class="getPriorityClass(task.Priority)" class="px-2 py-1 text-xs font-semibold rounded-full">
+                    {{ task.Priority }}
+                  </span>
+                </td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
+                  <span :class="getStatusClass(task.Status)" class="px-2 py-1 text-xs font-semibold rounded-full">
+                    {{ task.Status }}
+                  </span>
+                </td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-400">{{ formatDate(task.DueDate) }}</td>
+                <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                  <div class="flex items-center justify-end space-x-2">
+                    <button @click="openViewModal(task.ID)" type="button" class="inline-flex items-center gap-x-1.5 rounded-md bg-gray-700 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600">
+                      <svg class="-ml-0.5 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+                        <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.18l.879-1.148a1.65 1.65 0 011.956-.543l1.223.345a1.65 1.65 0 011.215 1.088l.28.84a1.65 1.65 0 01-1.67 1.977l-1.257-.355a1.65 1.65 0 01-1.552-1.223l-.212-.635zM19.336 10.59a1.651 1.651 0 010-1.18l-.879-1.148a1.65 1.65 0 01-1.956-.543l-1.223.345a1.65 1.65 0 01-1.215 1.088l-.28.84a1.65 1.65 0 011.67 1.977l1.257-.355a1.65 1.65 0 011.552-1.223l.212-.635zM10 18a8 8 0 100-16 8 8 0 000 16z" clip-rule="evenodd" />
+                      </svg>
+                    </button>
+                    <button @click="openEditModal(task.ID)" type="button" class="inline-flex items-center gap-x-1.5 rounded-md bg-blue-600 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+                      <svg class="-ml-0.5 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- Modals -->
@@ -76,7 +98,6 @@
         />
       </template>
     </Modal>
-
   </div>
 </template>
 
@@ -95,6 +116,8 @@ const showCreateModal = ref(false);
 const showViewModal = ref(false);
 const showEditModal = ref(false);
 const selectedTask = ref(null);
+
+
 
 const openCreateModal = () => {
   showCreateModal.value = true;
@@ -170,6 +193,8 @@ const handleCommentSubmitted = async () => {
 onMounted(() => {
   tasksStore.fetchTasks();
 });
+
+
 
 const getPriorityClass = (priority) => {
   switch (priority) {

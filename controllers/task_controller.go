@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"taskmanager/database"
 	"taskmanager/models"
@@ -51,6 +52,13 @@ type UpdateTaskStatusInput struct {
 
 type AddTaskCommentInput struct {
 	Comment string `json:"comment" binding:"required"`
+}
+
+type GetMyTasksFilterInput struct {
+	FromDate   *utils.Date `json:"from_date"`
+	ToDate     *utils.Date `json:"to_date"`
+	Status     string      `json:"status"`
+	TaskTypeID uint        `json:"task_type_id"`
 }
 
 // CreateTask creates a new task
@@ -223,10 +231,18 @@ func CreateTask(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"data": task})
 }
 
-// GetTasks retrieves all tasks
+// GetTasks retrieves all tasks created by the authenticated user
 func GetTasks(c *gin.Context) {
+	authUserID := uint(c.MustGet("user_id").(float64))
+
 	var tasks []models.Task
-	if err := database.DB.Preload("AssignedUsers.User").Preload("AssignedGroups.Group.Users").Preload("FollowupUsers.User").Preload("FollowupGroups.Group.Users").Find(&tasks).Error; err != nil {
+	if err := database.DB.
+		Preload("AssignedUsers.User").
+		Preload("AssignedGroups.Group.Users").
+		Preload("FollowupUsers.User").
+		Preload("FollowupGroups.Group.Users").
+		Where("created_by = ?", authUserID).
+		Find(&tasks).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tasks"})
 		return
 	}
@@ -446,7 +462,6 @@ func UpdateTask(c *gin.Context) {
 		}
 	}
 
-
 	if err := tx.Commit().Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
 		return
@@ -653,4 +668,161 @@ func DeleteTask(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Task deleted successfully"})
+}
+
+// GetMyTasks retrieves tasks assigned to or followed by the authenticated user
+func GetMyTasks(c *gin.Context) {
+	authUserID := uint(c.MustGet("user_id").(float64))
+
+	// Get all group IDs for the current user
+	var groupIDs []uint
+	if err := database.DB.Model(&models.UserGroup{}).Where("user_id = ?", authUserID).Pluck("group_id", &groupIDs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user groups"})
+		return
+	}
+
+	taskIDMap := make(map[uint]bool)
+
+	// 1. Tasks assigned directly to the user
+	var assignedUserTaskIDs []uint
+	database.DB.Model(&models.AssignTaskToUser{}).Where("user_id = ?", authUserID).Pluck("task_id", &assignedUserTaskIDs)
+	for _, id := range assignedUserTaskIDs {
+		taskIDMap[id] = true
+	}
+
+	// 2. Tasks followed directly by the user
+	var followupUserTaskIDs []uint
+	database.DB.Model(&models.TaskFollowupUser{}).Where("user_id = ?", authUserID).Pluck("task_id", &followupUserTaskIDs)
+	for _, id := range followupUserTaskIDs {
+		taskIDMap[id] = true
+	}
+
+	if len(groupIDs) > 0 {
+		// 3. Tasks assigned to the user's groups
+		var assignedGroupTaskIDs []uint
+		database.DB.Model(&models.AssignTaskToGroup{}).Where("group_id IN ?", groupIDs).Pluck("task_id", &assignedGroupTaskIDs)
+		for _, id := range assignedGroupTaskIDs {
+			taskIDMap[id] = true
+		}
+
+		// 4. Tasks followed by the user's groups
+		var followupGroupTaskIDs []uint
+		database.DB.Model(&models.TaskFollowupGroup{}).Where("group_id IN ?", groupIDs).Pluck("task_id", &followupGroupTaskIDs)
+		for _, id := range followupGroupTaskIDs {
+			taskIDMap[id] = true
+		}
+	}
+
+	var relevantTaskIDs []uint
+	for id := range taskIDMap {
+		relevantTaskIDs = append(relevantTaskIDs, id)
+	}
+
+	var tasks []models.Task
+	if len(relevantTaskIDs) > 0 {
+		if err := database.DB.
+			Preload("AssignedUsers.User").
+			Preload("AssignedGroups.Group.Users").
+			Preload("FollowupUsers.User").
+			Preload("FollowupGroups.Group.Users").
+			Where("id IN ?", relevantTaskIDs).
+			Find(&tasks).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tasks"})
+			return
+		}
+	} else {
+		tasks = []models.Task{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": tasks})
+}
+
+// GetMyTasksFiltered retrieves tasks assigned to or followed by the authenticated user with filters
+func GetMyTasksFiltered(c *gin.Context) {
+	authUserID := uint(c.MustGet("user_id").(float64))
+
+	var filterInput GetMyTasksFilterInput
+	if err := c.ShouldBindJSON(&filterInput); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid filter input"})
+		return
+	}
+
+	// Get all group IDs for the current user
+	var groupIDs []uint
+	if err := database.DB.Model(&models.UserGroup{}).Where("user_id = ?", authUserID).Pluck("group_id", &groupIDs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user groups"})
+		return
+	}
+
+	taskIDMap := make(map[uint]bool)
+
+	// 1. Tasks assigned directly to the user
+	var assignedUserTaskIDs []uint
+	database.DB.Model(&models.AssignTaskToUser{}).Where("user_id = ?", authUserID).Pluck("task_id", &assignedUserTaskIDs)
+	for _, id := range assignedUserTaskIDs {
+		taskIDMap[id] = true
+	}
+
+	// 2. Tasks followed directly by the user
+	var followupUserTaskIDs []uint
+	database.DB.Model(&models.TaskFollowupUser{}).Where("user_id = ?", authUserID).Pluck("task_id", &followupUserTaskIDs)
+	for _, id := range followupUserTaskIDs {
+		taskIDMap[id] = true
+	}
+
+	if len(groupIDs) > 0 {
+		// 3. Tasks assigned to the user's groups
+		var assignedGroupTaskIDs []uint
+		database.DB.Model(&models.AssignTaskToGroup{}).Where("group_id IN ?", groupIDs).Pluck("task_id", &assignedGroupTaskIDs)
+		for _, id := range assignedGroupTaskIDs {
+			taskIDMap[id] = true
+		}
+
+		// 4. Tasks followed by the user's groups
+		var followupGroupTaskIDs []uint
+		database.DB.Model(&models.TaskFollowupGroup{}).Where("group_id IN ?", groupIDs).Pluck("task_id", &followupGroupTaskIDs)
+		for _, id := range followupGroupTaskIDs {
+			taskIDMap[id] = true
+		}
+	}
+
+	var relevantTaskIDs []uint
+	for id := range taskIDMap {
+		relevantTaskIDs = append(relevantTaskIDs, id)
+	}
+
+	var tasks []models.Task
+	if len(relevantTaskIDs) > 0 {
+		db := database.DB.
+			Preload("AssignedUsers.User").
+			Preload("AssignedGroups.Group.Users").
+			Preload("FollowupUsers.User").
+			Preload("FollowupGroups.Group.Users").
+			Where("id IN ?", relevantTaskIDs)
+
+		// Apply filters from JSON body
+		if filterInput.FromDate != nil && !filterInput.FromDate.IsZero() {
+			db = db.Where("start_date >= ?", filterInput.FromDate.Time)
+		}
+		if filterInput.ToDate != nil && !filterInput.ToDate.IsZero() {
+			// To include the entire end day, add 23 hours, 59 minutes, 59 seconds
+			endOfDay := filterInput.ToDate.Time.Add(24 * time.Hour).Add(-time.Second)
+			db = db.Where("due_date <= ?", endOfDay)
+		}
+		if filterInput.Status != "" {
+			db = db.Where("status = ?", filterInput.Status)
+		}
+		if filterInput.TaskTypeID != 0 {
+			db = db.Where("task_type_id = ?", filterInput.TaskTypeID)
+		}
+
+		if err := db.Find(&tasks).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tasks"})
+			return
+		}
+	} else {
+		tasks = []models.Task{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": tasks})
 }

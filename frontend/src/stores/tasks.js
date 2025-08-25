@@ -21,6 +21,27 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
+  async function fetchMyTasks(filterData = {}) {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      let response;
+      if (Object.keys(filterData).length > 0) {
+        // If filterData is provided, use the POST endpoint
+        response = await apiClient.post('/my-tasks/filter', filterData);
+      } else {
+        // Otherwise, use the GET endpoint
+        response = await apiClient.get('/my-tasks');
+      }
+      tasks.value = response.data.data;
+    } catch (e) {
+      error.value = 'Failed to fetch your tasks.';
+      console.error(e);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   async function createTask(taskData) {
     // Note: This function assumes taskData is already validated
     try {
@@ -67,5 +88,6 @@ export const useTasksStore = defineStore('tasks', () => {
     createTask,
     updateTask, // Add this
     fetchTaskById,
+    fetchMyTasks, // Add this
   };
 });

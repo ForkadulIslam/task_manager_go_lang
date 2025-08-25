@@ -7,8 +7,9 @@
         <nav class="mt-10 space-y-2">
           <!-- Navigation links will go here -->
           <RouterLink to="/dashboard" class="block py-2.5 px-4 rounded transition-colors hover:bg-gray-700">Dashboard</RouterLink>
-          <RouterLink to="/tasks" class="block py-2.5 px-4 rounded transition-colors hover:bg-gray-700">Tasks</RouterLink>
-          <a href="#" class="block py-2.5 px-4 rounded transition-colors hover:bg-gray-700">Groups</a>
+          <RouterLink to="/tasks" class="block py-2.5 px-4 rounded transition-colors hover:bg-gray-700">Generate Tasks</RouterLink>
+          <RouterLink to="/my-tasks" class="block py-2.5 px-4 rounded transition-colors hover:bg-gray-700">My Tasks</RouterLink>
+          <RouterLink to="/groups" class="block py-2.5 px-4 rounded transition-colors hover:bg-gray-700">Groups</RouterLink>
         </nav>
       </div>
     </aside>

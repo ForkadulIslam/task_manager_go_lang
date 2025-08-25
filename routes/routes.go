@@ -36,6 +36,8 @@ func SetupRoutes(r *gin.Engine) {
 		// Task routes
 		auth.POST("/tasks", controllers.CreateTask)
 		auth.GET("/tasks", controllers.GetTasks)
+		auth.GET("/my-tasks", controllers.GetMyTasks)
+		auth.POST("/my-tasks/filter", controllers.GetMyTasksFiltered) // New route for filtered My Tasks
 		auth.GET("/tasks/:id", controllers.GetTaskByID)
 		auth.PUT("/tasks/:id", controllers.UpdateTask)
 		auth.DELETE("/tasks/:id", controllers.DeleteTask)
@@ -43,7 +45,7 @@ func SetupRoutes(r *gin.Engine) {
 		auth.POST("/tasks/:id/comments", controllers.AddTaskComment)
 
 		// UserGroup routes
-		auth.POST("/user-groups", controllers.AddUserToGroup)
+		auth.POST("/user-groups", controllers.AssignUsersToGroup)
 		auth.GET("/user-groups", controllers.GetGroupsCreatedByUser)
 		auth.DELETE("/user-groups/:id", controllers.RemoveUserFromGroup)
 		auth.GET("/user-groups/my-groups", controllers.GetGroupsForUser)

@@ -80,11 +80,17 @@ func GetGroups(c *gin.Context) {
 	for _, group := range groups {
 		var userResponses []models.UserResponse
 		for _, user := range group.Users {
+			var userGroup models.UserGroup
+			if err := database.DB.Where("user_id = ? AND group_id = ?", user.ID, group.ID).First(&userGroup).Error; err != nil {
+				// This should ideally not happen if the data is consistent, but handle it gracefully
+				continue
+			}
 			userResponses = append(userResponses, models.UserResponse{
-				ID:        user.ID,
-				Username:  user.Username,
-				Status:    user.Status,
-				UserLabel: user.UserLabel,
+				ID:            user.ID,
+				Username:      user.Username,
+				Status:        user.Status,
+				UserLabel:     user.UserLabel,
+				AssociationID: userGroup.ID,
 			})
 		}
 		groupResponses = append(groupResponses, models.GroupResponse{

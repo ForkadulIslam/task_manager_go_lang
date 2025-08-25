@@ -33,6 +33,16 @@ const router = createRouter({
           // this generates a separate chunk (About.[hash].js) for this route
           // which is lazy-loaded when the route is visited.
           component: () => import('../views/TasksListView.vue')
+        },
+        {
+          path: 'my-tasks',
+          name: 'my-tasks',
+          component: () => import('../views/MyTasksView.vue')
+        },
+        {
+          path: 'groups',
+          name: 'groups',
+          component: () => import('../views/GroupListView.vue')
         }
         // Other authenticated routes like /tasks will be added here
       ]
