@@ -28,6 +28,7 @@ func ConnectDatabase() {
 		&models.AssignTaskToUser{},
 		&models.AssignTaskToGroup{},
 		&models.TaskFollowupUser{},
+		&models.TaskFollowupGroup{},
 		&models.TaskStatusUpdateLog{},
 		&models.TaskCommentLog{},
 		&models.TaskSeenByUser{},

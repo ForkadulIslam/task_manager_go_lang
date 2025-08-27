@@ -1,9 +1,10 @@
 package routes
 
 import (
-	"github.com/gin-gonic/gin"
 	"taskmanager/controllers"
 	"taskmanager/middleware"
+
+	"github.com/gin-gonic/gin"
 )
 
 func SetupRoutes(r *gin.Engine) {
@@ -29,9 +30,14 @@ func SetupRoutes(r *gin.Engine) {
 		auth.PUT("/task-types/:id", controllers.UpdateTaskType)
 		auth.DELETE("/task-types/:id", controllers.DeleteTaskType)
 
+		// User routes
+		auth.GET("/users", controllers.GetUsers)
+
 		// Task routes
 		auth.POST("/tasks", controllers.CreateTask)
 		auth.GET("/tasks", controllers.GetTasks)
+		auth.GET("/my-tasks", controllers.GetMyTasks)
+		auth.POST("/my-tasks/filter", controllers.GetMyTasksFiltered) // New route for filtered My Tasks
 		auth.GET("/tasks/:id", controllers.GetTaskByID)
 		auth.PUT("/tasks/:id", controllers.UpdateTask)
 		auth.DELETE("/tasks/:id", controllers.DeleteTask)
@@ -39,31 +45,13 @@ func SetupRoutes(r *gin.Engine) {
 		auth.POST("/tasks/:id/comments", controllers.AddTaskComment)
 
 		// UserGroup routes
-		auth.POST("/user-groups", controllers.AddUserToGroup)
+		auth.POST("/user-groups", controllers.AssignUsersToGroup)
 		auth.GET("/user-groups", controllers.GetGroupsCreatedByUser)
 		auth.DELETE("/user-groups/:id", controllers.RemoveUserFromGroup)
 		auth.GET("/user-groups/my-groups", controllers.GetGroupsForUser)
-
-		// AssignTaskToUser routes
-		auth.POST("/assign-task-to-user", controllers.AssignTaskToUser)
-		auth.DELETE("/assign-task-to-user/:id", controllers.RemoveTaskAssignmentFromUser)
-		auth.GET("/users/:user_id/assigned-tasks", controllers.GetTasksAssignedToUser)
-		auth.GET("/tasks/assigned-users/:task_id", controllers.GetUsersAssignedToTask)
-
-		// AssignTaskToGroup routes
-		auth.POST("/assign-task-to-group", controllers.AssignTaskToGroup)
-		auth.DELETE("/assign-task-to-group/:id", controllers.RemoveTaskAssignmentFromGroup)
-		auth.GET("/groups/assigned-tasks/:group_id", controllers.GetTasksAssignedToGroup)
-		auth.GET("/tasks/assigned-groups/:task_id", controllers.GetGroupsAssignedToTask)
-
-		// TaskFollowupUser routes
-		auth.POST("/task-followup-users", controllers.AddTaskFollowupUser)
-		auth.DELETE("/task-followup-users/:id", controllers.RemoveTaskFollowupUser)
-		auth.GET("/tasks/followup-users/:task_id", controllers.GetFollowupUsersForTask)
 
 		// Attachment upload route
 		auth.POST("/upload-attachment", controllers.UploadAttachment)
 	}
 
-	
 }

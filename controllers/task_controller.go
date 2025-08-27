@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"taskmanager/database"
 	"taskmanager/models"
@@ -27,6 +28,7 @@ type CreateTaskInput struct {
 	AssignedToUsers  []uint      `json:"assigned_to_users" binding:"omitempty,dive,gt=0"`
 	AssignedToGroups []uint      `json:"assigned_to_groups" binding:"omitempty,dive,gt=0"`
 	FollowUpUsers    []uint      `json:"follow_up_users" binding:"omitempty,dive,gt=0"`
+	FollowUpGroups   []uint      `json:"follow_up_groups" binding:"omitempty,dive,gt=0"`
 }
 
 type UpdateTaskInput struct {
@@ -41,6 +43,7 @@ type UpdateTaskInput struct {
 	AssignedToUsers  []uint      `json:"assigned_to_users" binding:"omitempty,dive,gt=0"`
 	AssignedToGroups []uint      `json:"assigned_to_groups" binding:"omitempty,dive,gt=0"`
 	FollowUpUsers    []uint      `json:"follow_up_users" binding:"omitempty,dive,gt=0"`
+	FollowUpGroups   []uint      `json:"follow_up_groups" binding:"omitempty,dive,gt=0"`
 }
 
 type UpdateTaskStatusInput struct {
@@ -49,6 +52,13 @@ type UpdateTaskStatusInput struct {
 
 type AddTaskCommentInput struct {
 	Comment string `json:"comment" binding:"required"`
+}
+
+type GetMyTasksFilterInput struct {
+	FromDate   *utils.Date `json:"from_date"`
+	ToDate     *utils.Date `json:"to_date"`
+	Status     string      `json:"status"`
+	TaskTypeID uint        `json:"task_type_id"`
 }
 
 // CreateTask creates a new task
@@ -137,6 +147,15 @@ func CreateTask(c *gin.Context) {
 		}
 	}
 
+	// Validate FollowUpGroups
+	for _, groupID := range input.FollowUpGroups {
+		var group models.Group
+		if err := database.DB.First(&group, groupID).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"errors": []string{fmt.Sprintf("Follow-up group with ID %d not found", groupID)}})
+			return
+		}
+	}
+
 	task := models.Task{
 		Label:       input.Label,
 		TaskTypeID:  input.TaskTypeID,
@@ -196,13 +215,34 @@ func CreateTask(c *gin.Context) {
 		}
 	}
 
+	// Assign task to follow-up groups
+	for _, groupID := range input.FollowUpGroups {
+		followUpGroup := models.TaskFollowupGroup{
+			TaskID:  task.ID,
+			GroupID: groupID,
+		}
+		if err := database.DB.Create(&followUpGroup).Error; err != nil {
+			// Handle error, perhaps rollback task creation or log it
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign task to follow-up group"})
+			return
+		}
+	}
+
 	c.JSON(http.StatusCreated, gin.H{"data": task})
 }
 
-// GetTasks retrieves all tasks
+// GetTasks retrieves all tasks created by the authenticated user
 func GetTasks(c *gin.Context) {
+	authUserID := uint(c.MustGet("user_id").(float64))
+
 	var tasks []models.Task
-	if err := database.DB.Preload("AssignedUsers.User").Preload("AssignedGroups.Group.Users").Preload("FollowupUsers.User").Find(&tasks).Error; err != nil {
+	if err := database.DB.
+		Preload("AssignedUsers.User").
+		Preload("AssignedGroups.Group.Users").
+		Preload("FollowupUsers.User").
+		Preload("FollowupGroups.Group.Users").
+		Where("created_by = ?", authUserID).
+		Find(&tasks).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tasks"})
 		return
 	}
@@ -215,7 +255,7 @@ func GetTaskByID(c *gin.Context) {
 	id := c.Param("id")
 	var task models.Task
 
-	if err := database.DB.Preload("AssignedUsers.User").Preload("AssignedGroups.Group.Users").Preload("FollowupUsers.User").Preload("Comments.User").Where("id = ?", id).First(&task).Error; err != nil {
+	if err := database.DB.Preload("AssignedUsers.User").Preload("AssignedGroups.Group.Users").Preload("FollowupUsers.User").Preload("FollowupGroups.Group.Users").Preload("Comments.User").Preload("Creator").Where("id = ?", id).First(&task).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"errors": []string{"Task not found"}})
 		return
 	}
@@ -327,6 +367,17 @@ func UpdateTask(c *gin.Context) {
 		}
 	}
 
+	// Validate FollowUpGroups, if provided
+	if input.FollowUpGroups != nil {
+		for _, groupID := range input.FollowUpGroups {
+			var group models.Group
+			if err := database.DB.First(&group, groupID).Error; err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"errors": []string{fmt.Sprintf("Follow-up group with ID %d not found", groupID)}})
+				return
+			}
+		}
+	}
+
 	// Using a transaction to ensure atomicity
 	tx := database.DB.Begin()
 
@@ -395,6 +446,21 @@ func UpdateTask(c *gin.Context) {
 		}
 	}
 
+	if input.FollowUpGroups != nil {
+		if err := tx.Where("task_id = ?", task.ID).Delete(&models.TaskFollowupGroup{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update follow-up groups"})
+			return
+		}
+		for _, groupID := range input.FollowUpGroups {
+			followUpGroup := models.TaskFollowupGroup{TaskID: task.ID, GroupID: groupID}
+			if err := tx.Create(&followUpGroup).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign task to follow-up group"})
+				return
+			}
+		}
+	}
 
 	if err := tx.Commit().Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
@@ -492,7 +558,21 @@ func isUserAssignedOrFollowup(db *gorm.DB, userID uint, taskID uint) (bool, erro
 		return false, err
 	}
 
-	return followupAssignment > 0, nil
+	if followupAssignment > 0 {
+		return true, nil
+	}
+
+	var followupGroupAssignment int64
+	err = db.Model(&models.UserGroup{}).
+		Joins("JOIN task_followup_groups ON user_groups.group_id = task_followup_groups.group_id").
+		Where("task_followup_groups.task_id = ? AND user_groups.user_id = ?", taskID, userID).
+		Count(&followupGroupAssignment).Error
+	if err != nil {
+		return false, err
+	}
+
+	return followupGroupAssignment > 0, nil
+
 }
 
 // AddTaskComment adds a comment to a task
@@ -512,6 +592,12 @@ func AddTaskComment(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check user assignment"})
 		return
 	}
+
+	// Allow task creator to comment
+	if task.CreatedBy == authUserID {
+		allowed = true
+	}
+
 	if !allowed {
 		c.JSON(http.StatusForbidden, gin.H{"errors": []string{"You are not authorized to comment on this task"}})
 		return
@@ -573,6 +659,11 @@ func DeleteTask(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task associations"})
 		return
 	}
+	if err := tx.Where("task_id = ?", task.ID).Delete(&models.TaskFollowupGroup{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task associations"})
+		return
+	}
 	if err := tx.Where("task_id = ?", task.ID).Delete(&models.TaskStatusUpdateLog{}).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task associations"})
@@ -602,4 +693,161 @@ func DeleteTask(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Task deleted successfully"})
+}
+
+// GetMyTasks retrieves tasks assigned to or followed by the authenticated user
+func GetMyTasks(c *gin.Context) {
+	authUserID := uint(c.MustGet("user_id").(float64))
+
+	// Get all group IDs for the current user
+	var groupIDs []uint
+	if err := database.DB.Model(&models.UserGroup{}).Where("user_id = ?", authUserID).Pluck("group_id", &groupIDs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user groups"})
+		return
+	}
+
+	taskIDMap := make(map[uint]bool)
+
+	// 1. Tasks assigned directly to the user
+	var assignedUserTaskIDs []uint
+	database.DB.Model(&models.AssignTaskToUser{}).Where("user_id = ?", authUserID).Pluck("task_id", &assignedUserTaskIDs)
+	for _, id := range assignedUserTaskIDs {
+		taskIDMap[id] = true
+	}
+
+	// 2. Tasks followed directly by the user
+	var followupUserTaskIDs []uint
+	database.DB.Model(&models.TaskFollowupUser{}).Where("user_id = ?", authUserID).Pluck("task_id", &followupUserTaskIDs)
+	for _, id := range followupUserTaskIDs {
+		taskIDMap[id] = true
+	}
+
+	if len(groupIDs) > 0 {
+		// 3. Tasks assigned to the user's groups
+		var assignedGroupTaskIDs []uint
+		database.DB.Model(&models.AssignTaskToGroup{}).Where("group_id IN ?", groupIDs).Pluck("task_id", &assignedGroupTaskIDs)
+		for _, id := range assignedGroupTaskIDs {
+			taskIDMap[id] = true
+		}
+
+		// 4. Tasks followed by the user's groups
+		var followupGroupTaskIDs []uint
+		database.DB.Model(&models.TaskFollowupGroup{}).Where("group_id IN ?", groupIDs).Pluck("task_id", &followupGroupTaskIDs)
+		for _, id := range followupGroupTaskIDs {
+			taskIDMap[id] = true
+		}
+	}
+
+	var relevantTaskIDs []uint
+	for id := range taskIDMap {
+		relevantTaskIDs = append(relevantTaskIDs, id)
+	}
+
+	var tasks []models.Task
+	if len(relevantTaskIDs) > 0 {
+		if err := database.DB.
+			Preload("AssignedUsers.User").
+			Preload("AssignedGroups.Group.Users").
+			Preload("FollowupUsers.User").
+			Preload("FollowupGroups.Group.Users").
+			Where("id IN ?", relevantTaskIDs).
+			Find(&tasks).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tasks"})
+			return
+		}
+	} else {
+		tasks = []models.Task{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": tasks})
+}
+
+// GetMyTasksFiltered retrieves tasks assigned to or followed by the authenticated user with filters
+func GetMyTasksFiltered(c *gin.Context) {
+	authUserID := uint(c.MustGet("user_id").(float64))
+
+	var filterInput GetMyTasksFilterInput
+	if err := c.ShouldBindJSON(&filterInput); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid filter input"})
+		return
+	}
+
+	// Get all group IDs for the current user
+	var groupIDs []uint
+	if err := database.DB.Model(&models.UserGroup{}).Where("user_id = ?", authUserID).Pluck("group_id", &groupIDs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user groups"})
+		return
+	}
+
+	taskIDMap := make(map[uint]bool)
+
+	// 1. Tasks assigned directly to the user
+	var assignedUserTaskIDs []uint
+	database.DB.Model(&models.AssignTaskToUser{}).Where("user_id = ?", authUserID).Pluck("task_id", &assignedUserTaskIDs)
+	for _, id := range assignedUserTaskIDs {
+		taskIDMap[id] = true
+	}
+
+	// 2. Tasks followed directly by the user
+	var followupUserTaskIDs []uint
+	database.DB.Model(&models.TaskFollowupUser{}).Where("user_id = ?", authUserID).Pluck("task_id", &followupUserTaskIDs)
+	for _, id := range followupUserTaskIDs {
+		taskIDMap[id] = true
+	}
+
+	if len(groupIDs) > 0 {
+		// 3. Tasks assigned to the user's groups
+		var assignedGroupTaskIDs []uint
+		database.DB.Model(&models.AssignTaskToGroup{}).Where("group_id IN ?", groupIDs).Pluck("task_id", &assignedGroupTaskIDs)
+		for _, id := range assignedGroupTaskIDs {
+			taskIDMap[id] = true
+		}
+
+		// 4. Tasks followed by the user's groups
+		var followupGroupTaskIDs []uint
+		database.DB.Model(&models.TaskFollowupGroup{}).Where("group_id IN ?", groupIDs).Pluck("task_id", &followupGroupTaskIDs)
+		for _, id := range followupGroupTaskIDs {
+			taskIDMap[id] = true
+		}
+	}
+
+	var relevantTaskIDs []uint
+	for id := range taskIDMap {
+		relevantTaskIDs = append(relevantTaskIDs, id)
+	}
+
+	var tasks []models.Task
+	if len(relevantTaskIDs) > 0 {
+		db := database.DB.
+			Preload("AssignedUsers.User").
+			Preload("AssignedGroups.Group.Users").
+			Preload("FollowupUsers.User").
+			Preload("FollowupGroups.Group.Users").
+			Where("id IN ?", relevantTaskIDs)
+
+		// Apply filters from JSON body
+		if filterInput.FromDate != nil && !filterInput.FromDate.IsZero() {
+			db = db.Where("start_date >= ?", filterInput.FromDate.Time)
+		}
+		if filterInput.ToDate != nil && !filterInput.ToDate.IsZero() {
+			// To include the entire end day, add 23 hours, 59 minutes, 59 seconds
+			endOfDay := filterInput.ToDate.Time.Add(24 * time.Hour).Add(-time.Second)
+			db = db.Where("due_date <= ?", endOfDay)
+		}
+		if filterInput.Status != "" {
+			db = db.Where("status = ?", filterInput.Status)
+		}
+		if filterInput.TaskTypeID != 0 {
+			db = db.Where("task_type_id = ?", filterInput.TaskTypeID)
+		}
+
+		if err := db.Find(&tasks).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tasks"})
+			return
+		}
+	} else {
+		tasks = []models.Task{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": tasks})
 }

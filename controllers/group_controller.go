@@ -80,11 +80,17 @@ func GetGroups(c *gin.Context) {
 	for _, group := range groups {
 		var userResponses []models.UserResponse
 		for _, user := range group.Users {
+			var userGroup models.UserGroup
+			if err := database.DB.Where("user_id = ? AND group_id = ?", user.ID, group.ID).First(&userGroup).Error; err != nil {
+				// This should ideally not happen if the data is consistent, but handle it gracefully
+				continue
+			}
 			userResponses = append(userResponses, models.UserResponse{
-				ID:        user.ID,
-				Username:  user.Username,
-				Status:    user.Status,
-				UserLabel: user.UserLabel,
+				ID:            user.ID,
+				Username:      user.Username,
+				Status:        user.Status,
+				UserLabel:     user.UserLabel,
+				AssociationID: userGroup.ID,
 			})
 		}
 		groupResponses = append(groupResponses, models.GroupResponse{
@@ -157,12 +163,38 @@ func DeleteGroup(c *gin.Context) {
 	id := c.Param("id")
 	var group models.Group
 
-	if err := database.DB.Where("id = ?", id).First(&group).Error; err != nil {
+	if err := database.DB.Where("id = ? ", id).First(&group).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Group not found"})
 		return
 	}
 
-	database.DB.Delete(&group)
+	// Authorization check: Only the creator can delete the group
+	authUserID := uint(c.MustGet("user_id").(float64))
+	if group.CreatedBy != authUserID {
+		c.JSON(http.StatusForbidden, gin.H{"errors": []string{"You are not authorized to delete this group"}})
+		return
+	}
+
+	tx := database.DB.Begin()
+
+	// Delete associated UserGroup entries
+	if err := tx.Where("group_id = ?", group.ID).Delete(&models.UserGroup{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete associated user groups"})
+		return
+	}
+
+	// Delete the group itself
+	if err := tx.Delete(&group).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete group"})
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Group deleted successfully"})
 }

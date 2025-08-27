@@ -10,9 +10,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type AddUserToGroupInput struct {
-	UserID  uint `json:"user_id" binding:"required"`
-	GroupID uint `json:"group_id" binding:"required"`
+type AssignUsersToGroupInput struct {
+	UserIDs []uint `json:"user_ids" binding:"required,min=1"`
+	GroupID uint   `json:"group_id" binding:"required"`
 }
 
 // GetGroupsCreatedByUser list group created by auth user
@@ -55,17 +55,11 @@ func GetGroupsCreatedByUser(c *gin.Context) {
 }
 
 // AddUserToGroup adds a user to a group
-func AddUserToGroup(c *gin.Context) {
-	var input AddUserToGroupInput
+// AssignUsersToGroup assigns multiple users to a group
+func AssignUsersToGroup(c *gin.Context) {
+	var input AssignUsersToGroupInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": []string{err.Error()}})
-		return
-	}
-
-	// Check if UserID exists
-	var user models.User
-	if err := database.DB.First(&user, input.UserID).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"errors": []string{"User not found"}})
 		return
 	}
 
@@ -76,21 +70,35 @@ func AddUserToGroup(c *gin.Context) {
 		return
 	}
 
-	// Check if the user is already in the group
-	var existingUserGroup models.UserGroup
-	if database.DB.Where("user_id = ? AND group_id = ?", input.UserID, input.GroupID).First(&existingUserGroup).Error == nil {
-		c.JSON(http.StatusConflict, gin.H{"errors": []string{"User is already in this group"}})
+	var failedAssignments []string
+	for _, userID := range input.UserIDs {
+		// Check if UserID exists
+		var user models.User
+		if err := database.DB.First(&user, userID).Error; err != nil {
+			failedAssignments = append(failedAssignments, fmt.Sprintf("User with ID %d not found", userID))
+			continue
+		}
+
+		// Check if the user is already in the group
+		var existingUserGroup models.UserGroup
+		if database.DB.Where("user_id = ? AND group_id = ?", userID, input.GroupID).First(&existingUserGroup).Error == nil {
+			failedAssignments = append(failedAssignments, fmt.Sprintf("User %s is already in this group", user.Username))
+			continue
+		}
+		
+		userGroup := models.UserGroup{UserID: userID, GroupID: input.GroupID}
+		if err := database.DB.Create(&userGroup).Error; err != nil {
+			failedAssignments = append(failedAssignments, fmt.Sprintf("Failed to add user %s to group: %v", user.Username, err))
+			continue
+		}
+	}
+
+	if len(failedAssignments) > 0 {
+		c.JSON(http.StatusMultiStatus, gin.H{"message": "Some users could not be assigned", "failed_assignments": failedAssignments})
 		return
 	}
-	
-	userGroup := models.UserGroup{UserID: input.UserID, GroupID: input.GroupID}
 
-	if err := database.DB.Create(&userGroup).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"errors": []string{"Failed to add user to group"}})
-		return
-	}
-
-	c.JSON(http.StatusCreated, gin.H{"data": userGroup})
+	c.JSON(http.StatusCreated, gin.H{"message": "Users assigned successfully"})
 }
 
 // RemoveUserFromGroup removes a user from a group
