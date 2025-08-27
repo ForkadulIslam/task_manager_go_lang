@@ -158,7 +158,7 @@ const confirmRemoveUser = async (user) => {
       emit('membersUpdated'); // Notify parent to refresh group data
     } catch (error) {
       console.error('Failed to remove user from group:', error);
-      alert('Failed to remove user. Please try again.');
+      toastStore.showToast('Failed to remove user. Please try again.', 'error');
     }
   }
 };

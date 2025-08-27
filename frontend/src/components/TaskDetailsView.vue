@@ -18,7 +18,10 @@
         </div>
         <div class="flex items-center">
           <p class="font-semibold text-gray-300 flex items-center mr-2"><svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>Status:</p>
-          <span :class="getStatusClass(task.Status)" class="px-2 py-1 text-xs font-semibold rounded-full">{{ task.Status }}</span>
+          <select v-if="isAssignee" @change="updateTaskStatus" :value="task.Status" class="form-input bg-gray-700 border-gray-600 text-white text-xs py-1 px-2 rounded-full focus:ring-sky-500 focus:border-sky-500">
+            <option v-for="status in statusOptions" :key="status" :value="status">{{ status }}</option>
+          </select>
+          <span v-else :class="getStatusClass(task.Status)" class="px-2 py-1 text-xs font-semibold rounded-full">{{ task.Status }}</span>
         </div>
         <div class="flex items-center">
           <p class="font-semibold text-gray-300 mr-2">Start Date:</p>
@@ -127,12 +130,7 @@
       </div>
     </div>
 
-    <!-- Edit Task Modal -->
-    <Modal :show="showEditModal" @close="showEditModal = false">
-      <h3 class="text-lg font-bold text-white mb-4">Edit Task</h3>
-      <!-- Placeholder for EditTaskForm -->
-      <p class="text-gray-300">Edit form will go here.</p>
-    </Modal>
+   
   </div>
   <div v-else class="text-center text-gray-400">
     <p>No task selected or task data is missing.</p>
@@ -147,7 +145,47 @@ import Modal from './Modal.vue'; // Import Modal component
 import { useAuthStore } from '../stores/auth'; // Import useAuthStore
 
 const authStore = useAuthStore();
-const authUserID = computed(() => authStore.user?.id); // Safely get user ID
+const authUserID = computed(() => authStore.user?.id);
+
+const statusOptions = ['Pending', 'In Progress', 'In Review', 'Completed'];
+
+const isAssignee = computed(() => {
+  if (!props.task || !authUserID.value) {
+    return false;
+  }
+
+  const currentUserID = authUserID.value;
+
+  
+  // Check if assigned directly to user
+  if (props.task.AssignedUsers && props.task.AssignedUsers.some(au => au.id === currentUserID)) {
+    return true;
+  }
+
+  // Check if assigned via group
+  if (props.task.AssignedGroups) {
+    for (const ag of props.task.AssignedGroups) {
+      if (ag.Group && ag.Group.users && ag.Group.users.some(gu => gu.id === currentUserID)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+});
+
+const updateTaskStatus = async (event) => {
+  const newStatus = event.target.value;
+  try {
+    await apiClient.post(`/tasks/${props.task.ID}/status`, { status: newStatus });
+    // Update the local task object to reflect the change immediately
+    props.task.Status = newStatus;
+    alert('Task status updated successfully!');
+  } catch (error) {
+    console.error('Failed to update task status:', error);
+    alert('Failed to update task status. Please try again.');
+  }
+};
 
 const props = defineProps({
   task: {
@@ -227,29 +265,44 @@ const getAttachmentUrl = (path) => {
 };
 
 const canComment = computed(() => {
+    //console.log(currentUserID);
   if (!props.task || !authUserID.value) {
     return false;
   }
 
   const currentUserID = authUserID.value;
 
+
+  //Check if task created by auth user
+  if(props.task.CreatedBy === currentUserID){
+    return true;
+  }
+
   // Check if assigned directly to user
   if (props.task.AssignedUsers && props.task.AssignedUsers.some(au => au.UserID === currentUserID)) {
     return true;
   }
-
   // Check if assigned via group
   if (props.task.AssignedGroups) {
     for (const ag of props.task.AssignedGroups) {
-      if (ag.Group && ag.Group.Users && ag.Group.Users.some(gu => gu.ID === currentUserID)) {
+      if (ag.Group && ag.Group.users && ag.Group.users.some(gu => gu.id === currentUserID)) {
         return true;
       }
     }
   }
 
-  // Check if a follow-up user
+  console.log(props.task.FollowupUsers);
+  // Check if a follow-up user assigned directly
   if (props.task.FollowupUsers && props.task.FollowupUsers.some(fu => fu.UserID === currentUserID)) {
     return true;
+  }
+  //Check if a follow-up user assigned via group
+  if(props.task.FollowupGroups){
+    for (const ag of props.task.FollowupGroups) {
+      if (ag.Group && ag.Group.users && ag.Group.users.some(gu => gu.id === currentUserID)) {
+        return true;
+      }
+    }
   }
 
   return false;

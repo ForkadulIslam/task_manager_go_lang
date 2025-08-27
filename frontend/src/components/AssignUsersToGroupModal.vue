@@ -87,7 +87,7 @@ const assignUsersToGroup = async () => {
     emit('close'); // Close the modal
   } catch (error) {
     console.error('Failed to assign users to group:', error);
-    alert('Failed to assign users. Please try again.');
+    toastStore.showToast('Failed to assign users. Please try again.', 'error');
   }
 };
 </script>

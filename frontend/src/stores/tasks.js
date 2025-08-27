@@ -80,6 +80,17 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
+  async function deleteTask(taskId) {
+    try {
+      await apiClient.delete(`/tasks/${taskId}`);
+      // Remove the deleted task from the local state
+      tasks.value = tasks.value.filter(task => task.ID !== taskId);
+    } catch (e) {
+      console.error(`Failed to delete task ${taskId}:`, e);
+      throw new Error('Task deletion failed on the server.');
+    }
+  }
+
   return {
     tasks,
     isLoading,
@@ -89,5 +100,6 @@ export const useTasksStore = defineStore('tasks', () => {
     updateTask, // Add this
     fetchTaskById,
     fetchMyTasks, // Add this
+    deleteTask,
   };
 });

@@ -168,7 +168,7 @@ const openViewModal = async (taskId) => {
     selectedTask.value = fullTask; // Update with full task
   } catch (error) {
     console.error("Failed to fetch full task details:", error);
-    alert("Failed to load task details. Please try again.");
+    toastStore.showToast('Failed to load task details. Please try again.', 'error');
     showViewModal.value = false; // Close modal on error
   }
 };

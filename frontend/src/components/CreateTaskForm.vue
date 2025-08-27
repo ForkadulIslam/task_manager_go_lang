@@ -157,7 +157,7 @@ const uploadAttachment = async (file) => {
     alert('File uploaded successfully!');
   } catch (error) {
     console.error('File upload failed:', error);
-    alert('File upload failed. Please try again.');
+    toastStore.showToast('File upload failed. Please try again.', 'error');
     form.attachment = null; // Clear selected file on error
     form.attachmentPath = '';
   } finally {

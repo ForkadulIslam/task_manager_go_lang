@@ -558,7 +558,21 @@ func isUserAssignedOrFollowup(db *gorm.DB, userID uint, taskID uint) (bool, erro
 		return false, err
 	}
 
-	return followupAssignment > 0, nil
+	if followupAssignment > 0 {
+		return true, nil
+	}
+
+	var followupGroupAssignment int64
+	err = db.Model(&models.UserGroup{}).
+		Joins("JOIN task_followup_groups ON user_groups.group_id = task_followup_groups.group_id").
+		Where("task_followup_groups.task_id = ? AND user_groups.user_id = ?", taskID, userID).
+		Count(&followupGroupAssignment).Error
+	if err != nil {
+		return false, err
+	}
+
+	return followupGroupAssignment > 0, nil
+
 }
 
 // AddTaskComment adds a comment to a task
@@ -578,6 +592,12 @@ func AddTaskComment(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check user assignment"})
 		return
 	}
+
+	// Allow task creator to comment
+	if task.CreatedBy == authUserID {
+		allowed = true
+	}
+
 	if !allowed {
 		c.JSON(http.StatusForbidden, gin.H{"errors": []string{"You are not authorized to comment on this task"}})
 		return
@@ -635,6 +655,11 @@ func DeleteTask(c *gin.Context) {
 		return
 	}
 	if err := tx.Where("task_id = ?", task.ID).Delete(&models.TaskFollowupUser{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task associations"})
+		return
+	}
+	if err := tx.Where("task_id = ?", task.ID).Delete(&models.TaskFollowupGroup{}).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task associations"})
 		return
