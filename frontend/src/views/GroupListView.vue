@@ -74,6 +74,11 @@
                         <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
                       </svg>
                     </button>
+                    <button v-if="canEditGroup(group)" @click="handleDeleteGroup(group.id)" type="button" class="inline-flex items-center gap-x-1.5 rounded-md bg-red-600 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600">
+                      <svg class="-ml-0.5 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.368.298a.75.75 0 10.232 1.482l.175-.027c.572-.089 1.14-.19 1.706-.297H15.25a.75.75 0 000-1.5H6.75A.75.75 0 017.5 4.5h7.75a.75.75 0 000-1.5H8.75zM10 6a.75.75 0 01.75.75v6.5a.75.75 0 01-1.5 0v-6.5A.75.75 0 0110 6zm-3 0a.75.75 0 01.75.75v6.5a.75.75 0 01-1.5 0v-6.5A.75.75 0 017 6zm6 0a.75.75 0 01.75.75v6.5a.75.75 0 01-1.5 0v-6.5A.75.75 0 0113 6z" clip-rule="evenodd" />
+                      </svg>
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -151,9 +156,23 @@ import CreateGroupForm from '../components/CreateGroupForm.vue';
 import apiClient from '../services/api';
 import AssignUsersToGroupModal from '../components/AssignUsersToGroupModal.vue';
 import { useAuthStore } from '../stores/auth';
+import { useToastStore } from '../stores/toast';
 
 const metaStore = useMetaStore();
 const authStore = useAuthStore();
+const toastStore = useToastStore();
+
+const handleDeleteGroup = async (groupId) => {
+  if (confirm('Are you sure you want to delete this group and all its associated users? This action cannot be undone.')) {
+    try {
+      await metaStore.deleteGroup(groupId);
+      toastStore.addToast({ message: 'Group deleted successfully!', type: 'success' });
+    } catch (error) {
+      console.error("Failed to delete group:", error);
+      toastStore.addToast({ message: `Failed to delete group: ${error.message}`, type: 'error' });
+    }
+  }
+};
 
 const showCreateModal = ref(false);
 const showEditModal = ref(false);

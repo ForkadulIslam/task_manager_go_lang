@@ -33,6 +33,17 @@ export const useMetaStore = defineStore('meta', () => {
     }
   }
 
+  async function deleteGroup(groupId) {
+    try {
+      await apiClient.delete(`/groups/${groupId}`);
+      // After successful deletion, refresh the groups list
+      await fetchMeta();
+    } catch (e) {
+      console.error(`Failed to delete group ${groupId}:`, e);
+      throw new Error('Group deletion failed on the server.');
+    }
+  }
+
   return {
     taskTypes,
     users,
@@ -40,5 +51,6 @@ export const useMetaStore = defineStore('meta', () => {
     isLoading,
     error,
     fetchMeta,
+    deleteGroup,
   };
 });
