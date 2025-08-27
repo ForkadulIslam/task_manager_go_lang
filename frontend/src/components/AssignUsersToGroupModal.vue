@@ -6,7 +6,7 @@
     <template #body>
       <div class="space-y-4">
         <!-- Add User Section -->
-        <div>
+        <div class="min-h-[200px]"> <!-- Added min-h-[200px] -->
           <h3 class="text-lg font-semibold text-white mb-2">Select Members to Add</h3>
           <MultiSelectCombobox
             v-model="selectedUsersToAdd"

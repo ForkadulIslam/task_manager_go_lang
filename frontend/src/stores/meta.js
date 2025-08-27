@@ -20,14 +20,17 @@ export const useMetaStore = defineStore('meta', () => {
         apiClient.get('/groups'),
       ]);
 
-      taskTypes.value = typesRes.data.data;
-      users.value = usersRes.data.data;
-      groups.value = groupsRes.data.data;
+      taskTypes.value = typesRes.data.data || [];
+      users.value = usersRes.data.data || [];
+      groups.value = groupsRes.data.data || [];
 
     } catch (e) {
       error.value = 'Failed to fetch form metadata.';
       console.error(e);
-      // Handle cases where one or more requests fail
+      // Ensure all refs are arrays even on error
+      taskTypes.value = [];
+      users.value = [];
+      groups.value = [];
     } finally {
       isLoading.value = false;
     }

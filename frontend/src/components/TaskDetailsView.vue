@@ -156,9 +156,8 @@ const isAssignee = computed(() => {
 
   const currentUserID = authUserID.value;
 
-  
   // Check if assigned directly to user
-  if (props.task.AssignedUsers && props.task.AssignedUsers.some(au => au.id === currentUserID)) {
+  if (props.task.AssignedUsers && props.task.AssignedUsers.some(au => au.User.id === currentUserID)) {
     return true;
   }
 
