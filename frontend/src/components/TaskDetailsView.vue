@@ -143,9 +143,11 @@ import apiClient from '../services/api'; // Import apiClient
 import UserAvatar from './UserAvatar.vue'; // Import UserAvatar component
 import Modal from './Modal.vue'; // Import Modal component
 import { useAuthStore } from '../stores/auth'; // Import useAuthStore
+import { useToastStore } from '../stores/toast'; // New import
 
 const authStore = useAuthStore();
 const authUserID = computed(() => authStore.user?.id);
+const toastStore = useToastStore(); // New initialization
 
 const statusOptions = ['Pending', 'In Progress', 'In Review', 'Completed'];
 
@@ -179,10 +181,10 @@ const updateTaskStatus = async (event) => {
     await apiClient.post(`/tasks/${props.task.ID}/status`, { status: newStatus });
     // Update the local task object to reflect the change immediately
     props.task.Status = newStatus;
-    alert('Task status updated successfully!');
+    toastStore.addToast('Task status updated successfully!', 'success');
   } catch (error) {
     console.error('Failed to update task status:', error);
-    alert('Failed to update task status. Please try again.');
+    toastStore.addToast('Failed to update task status. Please try again.', 'error');
   }
 };
 
@@ -199,7 +201,7 @@ const newComment = ref(''); // New reactive variable for comment input
 
 const submitComment = async () => { // Make it async
   if (newComment.value.trim() === '') {
-    alert('Comment cannot be empty.');
+    toastStore.addToast('Comment cannot be empty.', 'info');
     return;
   }
 
@@ -212,14 +214,14 @@ const submitComment = async () => { // Make it async
 
     await apiClient.post(`/tasks/${taskId}/comments`, commentData);
 
-    alert('Comment submitted successfully!');
+    toastStore.addToast('Comment submitted successfully!', 'success');
     newComment.value = ''; // Clear the textarea
 
     emit('commentSubmitted'); // Emit a custom event
 
   } catch (error) {
     console.error('Failed to submit comment:', error);
-    alert('Failed to submit comment. Please try again.');
+    toastStore.addToast('Failed to submit comment. Please try again.', 'error');
   }
 };
 

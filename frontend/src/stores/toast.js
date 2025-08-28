@@ -5,7 +5,7 @@ export const useToastStore = defineStore('toast', () => {
   const toasts = ref([]);
   let nextId = 0;
 
-  function showToast(message, type = 'info', duration = 5000) {
+  function addToast(message, type = 'info', duration = 5000) {
     const id = nextId++;
     toasts.value.push({ id, message, type });
 
@@ -22,7 +22,7 @@ export const useToastStore = defineStore('toast', () => {
 
   return {
     toasts,
-    showToast,
+    addToast, // Renamed
     removeToast,
   };
 });

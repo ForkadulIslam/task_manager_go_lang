@@ -242,6 +242,7 @@ func GetTasks(c *gin.Context) {
 		Preload("FollowupUsers.User").
 		Preload("FollowupGroups.Group.Users").
 		Where("created_by = ?", authUserID).
+		Order("created_at DESC").
 		Find(&tasks).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tasks"})
 		return
@@ -750,7 +751,9 @@ func GetMyTasks(c *gin.Context) {
 			Preload("AssignedGroups.Group.Users").
 			Preload("FollowupUsers.User").
 			Preload("FollowupGroups.Group.Users").
+			Preload("Creator").
 			Where("id IN ?", relevantTaskIDs).
+			Order("created_at DESC").
 			Find(&tasks).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tasks"})
 			return
@@ -823,7 +826,9 @@ func GetMyTasksFiltered(c *gin.Context) {
 			Preload("AssignedGroups.Group.Users").
 			Preload("FollowupUsers.User").
 			Preload("FollowupGroups.Group.Users").
-			Where("id IN ?", relevantTaskIDs)
+			Preload("Creator").
+			Where("id IN ?", relevantTaskIDs).
+			Order("created_at DESC")
 
 		// Apply filters from JSON body
 		if filterInput.FromDate != nil && !filterInput.FromDate.IsZero() {

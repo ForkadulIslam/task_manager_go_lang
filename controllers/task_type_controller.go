@@ -42,7 +42,7 @@ func CreateTaskType(c *gin.Context) {
 // GetTaskTypes retrieves all task types
 func GetTaskTypes(c *gin.Context) {
 	var taskTypes []models.TaskType
-	if err := database.DB.Find(&taskTypes).Error; err != nil {
+	if err := database.DB.Order("created_at DESC").Find(&taskTypes).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve task types"})
 		return
 	}

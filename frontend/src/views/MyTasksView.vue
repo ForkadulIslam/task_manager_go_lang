@@ -67,6 +67,7 @@
                 <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-white">Priority</th>
                 <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-white">Status</th>
                 <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-white">Due Date</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-white">Creator</th>
                 <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
                   <span class="sr-only">View</span>
                 </th>
@@ -86,6 +87,7 @@
                   </span>
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-400">{{ formatDate(task.DueDate) }}</td>
+                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-400">{{ task.Creator ? task.Creator.username : 'N/A' }}</td>
                 <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                   <div class="flex items-center justify-end space-x-2">
                     <button @click="openViewModal(task.ID)" type="button" class="inline-flex items-center gap-x-1.5 rounded-md bg-gray-700 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600">
@@ -118,10 +120,12 @@
 import { onMounted, ref, reactive } from 'vue';
 import { useTasksStore } from '../stores/tasks';
 import { useMetaStore } from '../stores/meta';
+import { useToastStore } from '../stores/toast'; // New import
 import Modal from '../components/Modal.vue';
 import TaskDetailsView from '../components/TaskDetailsView.vue';
 
 const tasksStore = useTasksStore();
+const toastStore = useToastStore(); // New initialization
 
 // Modal visibility state
 const showViewModal = ref(false);
@@ -168,7 +172,7 @@ const openViewModal = async (taskId) => {
     selectedTask.value = fullTask; // Update with full task
   } catch (error) {
     console.error("Failed to fetch full task details:", error);
-    toastStore.showToast('Failed to load task details. Please try again.', 'error');
+    toastStore.addToast('Failed to load task details. Please try again.', 'error'); // Changed to addToast
     showViewModal.value = false; // Close modal on error
   }
 };

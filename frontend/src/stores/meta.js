@@ -47,6 +47,36 @@ export const useMetaStore = defineStore('meta', () => {
     }
   }
 
+  async function createTaskType(taskTypeData) {
+    try {
+      await apiClient.post('/task-types', taskTypeData);
+      await fetchMeta(); // Refresh all meta data, including task types
+    } catch (e) {
+      console.error("Failed to create task type:", e);
+      throw new Error('Task type creation failed on the server.');
+    }
+  }
+
+  async function updateTaskType(id, taskTypeData) {
+    try {
+      await apiClient.put(`/task-types/${id}`, taskTypeData);
+      await fetchMeta(); // Refresh all meta data, including task types
+    } catch (e) {
+      console.error(`Failed to update task type ${id}:`, e);
+      throw new Error('Task type update failed on the server.');
+    }
+  }
+
+  async function deleteTaskType(id) {
+    try {
+      await apiClient.delete(`/task-types/${id}`);
+      await fetchMeta(); // Refresh all meta data, including task types
+    } catch (e) {
+      console.error(`Failed to delete task type ${id}:`, e);
+      throw new Error('Task type deletion failed on the server.');
+    }
+  }
+
   return {
     taskTypes,
     users,
@@ -55,5 +85,8 @@ export const useMetaStore = defineStore('meta', () => {
     error,
     fetchMeta,
     deleteGroup,
+    createTaskType,
+    updateTaskType,
+    deleteTaskType,
   };
 });

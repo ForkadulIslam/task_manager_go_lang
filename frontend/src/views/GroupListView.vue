@@ -46,7 +46,7 @@
                   <span v-if="sortColumn === 'users.length'">{{ sortDirection === 'asc' ? ' ▲' : ' ▼' }}</span>
                 </th>
                 <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-white cursor-pointer" @click="sortBy('created_by')">
-                  Created By (ID)
+                  Creator
                   <span v-if="sortColumn === 'created_by'">{{ sortDirection === 'asc' ? ' ▲' : ' ▼' }}</span>
                 </th>
                 <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-white cursor-pointer" @click="sortBy('created_at')">
@@ -166,10 +166,10 @@ const handleDeleteGroup = async (groupId) => {
   if (confirm('Are you sure you want to delete this group and all its associated users? This action cannot be undone.')) {
     try {
       await metaStore.deleteGroup(groupId);
-      toastStore.addToast({ message: 'Group deleted successfully!', type: 'success' });
+      toastStore.addToast('Group deleted successfully!', 'success');
     } catch (error) {
       console.error("Failed to delete group:", error);
-      toastStore.addToast({ message: `Failed to delete group: ${error.message}`, type: 'error' });
+      toastStore.addToast(`Failed to delete group: ${error.message}`, 'error');
     }
   }
 };
@@ -191,8 +191,8 @@ const itemsPerPage = ref(10);
 const searchQuery = ref('');
 
 // Sorting state
-const sortColumn = ref('label');
-const sortDirection = ref('asc');
+const sortColumn = ref('created_at'); // Changed to created_at
+const sortDirection = ref('desc'); // Changed to desc
 
 const openCreateModal = () => {
   showCreateModal.value = true;
@@ -208,7 +208,7 @@ const handleCreateGroup = async (formData) => {
     showAssignUsersModal.value = true; // Open assign users modal
   } catch (error) {
     console.error('Failed to create group:', error);
-    alert('Failed to create group. Please try again.');
+    toastStore.addToast('Failed to create group. Please try again.', 'error');
   } finally {
     isCreatingGroup.value = false; // Reset loading state
   }

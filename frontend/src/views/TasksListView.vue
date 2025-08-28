@@ -128,10 +128,10 @@ const handleDeleteTask = async (taskId) => {
   if (confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
     try {
       await tasksStore.deleteTask(taskId);
-      toastStore.addToast({ message: 'Task deleted successfully!', type: 'success' });
+      toastStore.addToast('Task deleted successfully!', 'success');
     } catch (error) {
       console.error("Failed to delete task:", error);
-      toastStore.addToast({ message: `Failed to delete task: ${error.message}`, type: 'error' });
+      toastStore.addToast(`Failed to delete task: ${error.message}`, 'error');
     }
   }
 };
