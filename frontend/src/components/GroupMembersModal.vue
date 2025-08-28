@@ -44,6 +44,7 @@ import MultiSelectCombobox from './MultiSelectCombobox.vue';
 import { useMetaStore } from '../stores/meta';
 import apiClient from '../services/api';
 import { useAuthStore } from '../stores/auth';
+import { useToastStore } from '../stores/toast'; // New import
 
 const props = defineProps({
   show: {
@@ -60,6 +61,7 @@ const emit = defineEmits(['close', 'membersUpdated']);
 
 const metaStore = useMetaStore();
 const authStore = useAuthStore();
+const toastStore = useToastStore(); // New initialization
 
 const isGroupCreator = computed(() => {
   return authStore.user && props.groupData && authStore.user.id === props.groupData.created_by;
@@ -111,7 +113,7 @@ onMounted(async () => {
 
 const addUsersToGroup = async () => {
   if (selectedUsersToAdd.value.length === 0) {
-    alert('Please select users to add.');
+    toastStore.addToast('Please select users to add.', 'info');
     return;
   }
 
@@ -124,7 +126,7 @@ const addUsersToGroup = async () => {
     const response = await apiClient.post('/user-groups', payload);
 
     if (response.status === 200 || response.status === 201) {
-      alert('Users added successfully!');
+      toastStore.addToast('Users added successfully!', 'success');
       // Optimistically add the users to the local list
       selectedUsersToAdd.value.forEach(user => {
         // Ensure the user object has the necessary properties (id, username)
@@ -132,14 +134,14 @@ const addUsersToGroup = async () => {
         currentMembers.value.push({ id: user.id, username: user.username });
       });
     } else if (response.status === 207) { // StatusMultiStatus
-      alert('Some users could not be added: ' + response.data.failed_assignments.join(', '));
+      toastStore.addToast('Some users could not be added: ' + response.data.failed_assignments.join(', '), 'warning');
     }
 
     selectedUsersToAdd.value = []; // Clear selection
     emit('membersUpdated'); // Notify parent to refresh group data
   } catch (error) {
     console.error('Failed to add users to group:', error);
-    alert('Failed to add users. Please try again.');
+    toastStore.addToast('Failed to add users. Please try again.', 'error');
   }
 };
 
@@ -147,18 +149,18 @@ const confirmRemoveUser = async (user) => {
   if (confirm(`Are you sure you want to remove ${user.username} from this group?`)) {
     try {
       if (!user.association_id) {
-        alert('Error: User association ID not found. Cannot remove user.');
+        toastStore.addToast('Error: User association ID not found. Cannot remove user.', 'error');
         console.error('Attempted to remove user without association_id:', user);
         return;
       }
       await apiClient.delete(`/user-groups/${user.association_id}`);
-      alert('User removed successfully!');
+      toastStore.addToast('User removed successfully!', 'success');
       // Optimistically remove the user from the local list
       currentMembers.value = currentMembers.value.filter(member => member.id !== user.id);
       emit('membersUpdated'); // Notify parent to refresh group data
     } catch (error) {
       console.error('Failed to remove user from group:', error);
-      toastStore.showToast('Failed to remove user. Please try again.', 'error');
+      toastStore.addToast('Failed to remove user. Please try again.', 'error');
     }
   }
 };

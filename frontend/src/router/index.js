@@ -43,6 +43,11 @@ const router = createRouter({
           path: 'groups',
           name: 'groups',
           component: () => import('../views/GroupListView.vue')
+        },
+        {
+          path: 'task-types',
+          name: 'task-types',
+          component: () => import('../views/TaskTypeListView.vue')
         }
         // Other authenticated routes like /tasks will be added here
       ]

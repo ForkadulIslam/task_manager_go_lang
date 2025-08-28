@@ -1,9 +1,4 @@
-GroupListView.vue:269 Uncaught (in promise) TypeError: filteredGroups.value is not iterable
-    at ComputedRefImpl.fn (GroupListView.vue:269:37)
-    at refreshComputed (chunk-GYQPBDJ4.js?v=e7840ba6:659:29)
-    at isDirty (chunk-GYQPBDJ4.js?v=e7840ba6:630:68)
-    at refreshComputed (chunk-GYQPBDJ4.js?v=e7840ba6:648:94)
-    at get value (chunk-GYQPBDJ4.js?v=e7840ba6:1860:5)
-    at unref (chunk-GYQPBDJ4.js?v=e7840ba6:1733:30)
-    at Object.get (chunk-GYQPBDJ4.js?v=e7840ba6:1739:64)
-    at Proxy._sfc_render (GroupListView.vue:62:35)
+CreateTaskForm.vue:81 [Vue warn]: Property "isUploading" was accessed during render but is not defined on instance. 
+  at <CreateTaskForm onSubmit=fn<handleCreateTask> > 
+  at <Modal show=true onClose=fn > 
+  at <TasksListView 

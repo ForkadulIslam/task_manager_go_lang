@@ -10,6 +10,7 @@
           <RouterLink to="/tasks" class="block py-2.5 px-4 rounded transition-colors hover:bg-gray-700">Generate Tasks</RouterLink>
           <RouterLink to="/my-tasks" class="block py-2.5 px-4 rounded transition-colors hover:bg-gray-700">My Tasks</RouterLink>
           <RouterLink to="/groups" class="block py-2.5 px-4 rounded transition-colors hover:bg-gray-700">Groups</RouterLink>
+          <RouterLink to="/task-types" class="block py-2.5 px-4 rounded transition-colors hover:bg-gray-700">Manage Task Types</RouterLink>
         </nav>
       </div>
     </aside>
@@ -29,12 +30,14 @@
         <RouterView />
       </main>
     </div>
+    <ToastContainer /> <!-- New component -->
   </div>
 </template>
 
 <script setup>
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
+import ToastContainer from '../components/ToastContainer.vue'; // New import
 
 const authStore = useAuthStore();
 const router = useRouter();

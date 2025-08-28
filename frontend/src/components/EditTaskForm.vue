@@ -70,16 +70,17 @@
 
       <!-- Description -->
       <div>
+        <label for="description" class="block text-sm font-medium text-gray-300 mb-1">Description</label>
+        <textarea v-model="form.description" id="description" rows="3" class="form-input"></textarea>
+      </div>
+
+      <div>
         <label for="attachment" class="block text-sm font-medium text-gray-300 mb-1">Attachment</label>
         <div class="flex items-center space-x-2">
           <input type="file" id="attachment" @change="handleFileChange" :disabled="isUploading" class="form-input file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100" />
           <span v-if="isUploading" class="text-gray-400 text-sm">Uploading...</span>
           <span v-else-if="form.attachmentPath" class="text-green-400 text-sm">Uploaded: {{ form.attachmentPath.split('/').pop() }}</span>
         </div>
-      </div>
-      <div>
-        <label for="description" class="block text-sm font-medium text-gray-300 mb-1">Description</label>
-        <textarea v-model="form.description" id="description" rows="3" class="form-input"></textarea>
       </div>
 
       <!-- Submit Button -->
@@ -99,6 +100,7 @@ import { useVuelidate } from '@vuelidate/core';
 import { required, minLength, helpers } from '@vuelidate/validators';
 import MultiSelectCombobox from './MultiSelectCombobox.vue';
 import apiClient from '../services/api'; // Import apiClient
+import { useToastStore } from '../stores/toast'; // New import
 
 const props = defineProps({
   initialTaskData: {
@@ -111,6 +113,7 @@ const emit = defineEmits(['submit']);
 
 const metaStore = useMetaStore();
 const isUploading = ref(false);
+const toastStore = useToastStore(); // New initialization
 
 const form = reactive({
   label: '',
@@ -198,10 +201,10 @@ const uploadAttachment = async (file) => {
       },
     });
     form.attachmentPath = response.data.filePath;
-    alert('File uploaded successfully!');
+    toastStore.addToast('File uploaded successfully!', 'success');
   } catch (error) {
     console.error('File upload failed:', error);
-    toastStore.showToast('File upload failed. Please try again.', 'error');
+    toastStore.addToast('File upload failed. Please try again.', 'error');
     form.attachment = null;
     form.attachmentPath = '';
   } finally {

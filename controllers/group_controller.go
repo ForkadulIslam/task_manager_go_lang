@@ -71,7 +71,7 @@ func CreateGroup(c *gin.Context) {
 func GetGroups(c *gin.Context) {
 	var groups []models.Group
 	// Preload the Users relationship
-	if err := database.DB.Preload("Users").Find(&groups).Error; err != nil {
+	if err := database.DB.Preload("Users").Order("created_at DESC").Find(&groups).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve groups"})
 		return
 	}

@@ -31,6 +31,7 @@ import Modal from './Modal.vue';
 import MultiSelectCombobox from './MultiSelectCombobox.vue';
 import { useMetaStore } from '../stores/meta';
 import apiClient from '../services/api';
+import { useToastStore } from '../stores/toast'; // New import
 
 const props = defineProps({
   show: {
@@ -46,6 +47,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'usersAssigned']);
 
 const metaStore = useMetaStore();
+const toastStore = useToastStore(); // New initialization
 const selectedUsersToAdd = ref([]);
 
 // Filter users already in the group from the general list of users
@@ -61,7 +63,7 @@ onMounted(async () => {
 
 const assignUsersToGroup = async () => {
   if (selectedUsersToAdd.value.length === 0) {
-    alert('Please select users to assign.');
+    toastStore.addToast('Please select users to assign.', 'info');
     return;
   }
 
@@ -76,9 +78,9 @@ const assignUsersToGroup = async () => {
     console.log('User assignment successful, response:', response);
 
     if (response.status === 200 || response.status === 201) {
-      // No alert here anymore
+      toastStore.addToast('Users assigned successfully!', 'success'); // Added success toast
     } else if (response.status === 207) { // StatusMultiStatus
-      alert('Some users could not be assigned: ' + response.data.failed_assignments.join(', '));
+      toastStore.addToast('Some users could not be assigned: ' + response.data.failed_assignments.join(', '), 'warning');
     }
 
     console.log('Code reached after assignment logic.');
@@ -87,7 +89,7 @@ const assignUsersToGroup = async () => {
     emit('close'); // Close the modal
   } catch (error) {
     console.error('Failed to assign users to group:', error);
-    toastStore.showToast('Failed to assign users. Please try again.', 'error');
+    toastStore.addToast('Failed to assign users. Please try again.', 'error');
   }
 };
 </script>
