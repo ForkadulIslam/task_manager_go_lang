@@ -123,7 +123,15 @@
     <Modal :show="showEditModal" @close="showEditModal = false">
       <template #header><h2>Edit Group</h2></template>
       <template #body>
-        <p class="text-gray-300">Group edit form will go here.</p>
+        <EditGroupForm 
+          v-if="showEditModal && selectedGroupForEdit"
+          :group="selectedGroupForEdit" 
+          @submit="handleUpdateGroup" 
+          :isLoading="isUpdatingGroup"
+        />
+        <div v-if="isUpdatingGroup" class="text-center text-gray-400 mt-4">
+          <p>Updating group...</p>
+        </div>
       </template>
     </Modal>
 
@@ -153,6 +161,7 @@ import { useMetaStore } from '../stores/meta';
 import Modal from '../components/Modal.vue';
 import GroupMembersModal from '../components/GroupMembersModal.vue'; // Import the new modal component
 import CreateGroupForm from '../components/CreateGroupForm.vue';
+import EditGroupForm from '../components/EditGroupForm.vue';
 import apiClient from '../services/api';
 import AssignUsersToGroupModal from '../components/AssignUsersToGroupModal.vue';
 import { useAuthStore } from '../stores/auth';
@@ -176,6 +185,8 @@ const handleDeleteGroup = async (groupId) => {
 
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
+const selectedGroupForEdit = ref(null);
+const isUpdatingGroup = ref(false);
 const showMembersModal = ref(false); // New state for members modal
 const selectedGroupForMembers = ref(null);
 const isCreatingGroup = ref(false); // New loading state
@@ -214,9 +225,30 @@ const handleCreateGroup = async (formData) => {
   }
 };
 
+const handleUpdateGroup = async (formData) => {
+  isUpdatingGroup.value = true;
+  try {
+    await apiClient.put(`/groups/${formData.id}`, { label: formData.label });
+    toastStore.addToast('Group updated successfully!', 'success');
+    showEditModal.value = false;
+    metaStore.fetchMeta();
+  } catch (error) {
+    console.error('Failed to update group:', error);
+    toastStore.addToast(`Failed to update group: ${error.message}`, 'error');
+  } finally {
+    isUpdatingGroup.value = false;
+  }
+};
+
 const openEditModal = (groupId) => {
-  console.log('Edit group with ID:', groupId);
-  showEditModal.value = true;
+  const group = metaStore.groups.find(g => g.id === groupId);
+  if (group) {
+    selectedGroupForEdit.value = { ...group };
+    showEditModal.value = true;
+  } else {
+    console.error('Group not found for editing');
+    toastStore.addToast('Could not find group details to edit.', 'error');
+  }
 };
 
 const openMembersModal = (group) => {
