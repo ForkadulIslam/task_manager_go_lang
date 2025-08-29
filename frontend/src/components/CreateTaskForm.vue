@@ -199,7 +199,7 @@ const handleSubmit = async () => {
     follow_up_users: form.followUpUsers.map(user => user.id),
     follow_up_groups: form.followUpGroups.map(group => group.id),
   };
-
+  
   emit('submit', payload);
 };
 </script>
