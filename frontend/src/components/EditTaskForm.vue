@@ -71,7 +71,7 @@
       <!-- Description -->
       <div>
         <label for="description" class="block text-sm font-medium text-gray-300 mb-1">Description</label>
-        <textarea v-model="form.description" id="description" rows="3" class="form-input"></textarea>
+        <RichTextEditor v-model="form.description" />
       </div>
 
       <div>
@@ -99,6 +99,7 @@ import { useMetaStore } from '../stores/meta';
 import { useVuelidate } from '@vuelidate/core';
 import { required, minLength, helpers } from '@vuelidate/validators';
 import MultiSelectCombobox from './MultiSelectCombobox.vue';
+import RichTextEditor from './RichTextEditor.vue';
 import apiClient from '../services/api'; // Import apiClient
 import { useToastStore } from '../stores/toast'; // New import
 

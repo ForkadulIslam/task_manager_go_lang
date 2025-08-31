@@ -92,7 +92,7 @@
     <!-- Description -->
     <div v-if="task.Description">
       <h4 class="font-semibold text-gray-300 mb-2 text-sm">Description:</h4>
-      <p class="text-xs bg-gray-700 p-3 rounded-md">{{ task.Description }}</p>
+      <div class="prose prose-sm prose-invert max-w-none bg-gray-700 p-3 rounded-md" v-html="task.Description"></div>
     </div>
 
     <!-- Comments -->
@@ -104,7 +104,7 @@
             <UserAvatar :username="comment.User.username" size="md" class="mr-2" />
             <p class="font-semibold text-gray-300">{{ comment.User.username }} <span class="text-gray-500 text-xxs ml-2">{{ formatDate(comment.CreatedAt) }}</span></p>
           </div>
-          <p class="mt-1 text-gray-200">{{ comment.Comment }}</p>
+          <div class="prose prose-sm prose-invert max-w-none mt-1 text-gray-200" v-html="comment.Comment"></div>
         </div>
     </div>
       </div>
@@ -115,12 +115,7 @@
         Add Comment:
       </h4>
       <div class="mt-4">
-        <textarea
-          v-model="newComment"
-          rows="3"
-          class="form-input w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-xs text-white focus:outline-none focus:ring-sky-500 focus:border-sky-500 transition"
-          placeholder="Write your comment here..."
-        ></textarea>
+        <RichTextEditor v-model="newComment" />
         <button
           @click="submitComment"
           class="mt-2 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-xs font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-colors"
@@ -144,6 +139,7 @@ import UserAvatar from './UserAvatar.vue'; // Import UserAvatar component
 import Modal from './Modal.vue'; // Import Modal component
 import { useAuthStore } from '../stores/auth'; // Import useAuthStore
 import { useToastStore } from '../stores/toast'; // New import
+import RichTextEditor from './RichTextEditor.vue'; // Import RichTextEditor
 
 const authStore = useAuthStore();
 const authUserID = computed(() => authStore.user?.id);
