@@ -11,6 +11,7 @@ func SetupRoutes(r *gin.Engine) {
 	r.GET("/hello", controllers.Hello)
 	r.POST("/register", controllers.Register)
 	r.POST("/login", controllers.Login)
+	r.GET("/sync-user", controllers.SyscUser)
 
 	// Authenticated routes
 	auth := r.Group("/")
@@ -52,6 +53,7 @@ func SetupRoutes(r *gin.Engine) {
 
 		// Attachment upload route
 		auth.POST("/upload-attachment", controllers.UploadAttachment)
+
 	}
 
 }

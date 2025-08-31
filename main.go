@@ -24,6 +24,9 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
+	// Serve static files from the "uploads" directory
+	r.Static("/uploads", "./uploads")
+
 	routes.SetupRoutes(r)
 	r.Run(":8080")
 }

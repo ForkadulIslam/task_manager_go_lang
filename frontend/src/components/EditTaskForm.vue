@@ -200,7 +200,7 @@ const uploadAttachment = async (file) => {
         'Content-Type': 'multipart/form-data',
       },
     });
-    form.attachmentPath = response.data.filePath;
+    form.attachmentPath = response.data.path;
     toastStore.addToast('File uploaded successfully!', 'success');
   } catch (error) {
     console.error('File upload failed:', error);

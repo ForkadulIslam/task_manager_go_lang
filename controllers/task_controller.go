@@ -171,6 +171,7 @@ func CreateTask(c *gin.Context) {
 		task.DueDate = &input.DueDate.Time
 	}
 
+	
 	if err := database.DB.Create(&task).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
 		return

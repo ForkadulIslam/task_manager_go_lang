@@ -95,7 +95,7 @@
 </template>
 
 <script setup>
-import { reactive, onMounted, ref } from 'vue';
+import { reactive, onMounted, ref, watch } from 'vue';
 import { useMetaStore } from '../stores/meta';
 import { useVuelidate } from '@vuelidate/core';
 import { required, minLength, helpers } from '@vuelidate/validators';
@@ -110,12 +110,18 @@ const toastStore = useToastStore(); // New initialization
 
 const isUploading = ref(false); // New ref declaration
 
+// Helper to get date in YYYY-MM-DD format
+const getTodaysDate = () => {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
+};
+
 const defaultFormState = {
   label: '',
   taskTypeId: '',
   priority: 'Normal',
-  startDate: '',
-  dueDate: '',
+  startDate: getTodaysDate(),
+  dueDate: getTodaysDate(),
   description: '',
   assignedToUsers: [],
   assignedToGroups: [],
@@ -133,8 +139,6 @@ const rules = {
   priority: { required },
   startDate: { required: helpers.withMessage('Start date is required', required) },
   dueDate: { 
-    // Due date is optional, but if provided, must be >= start date
-    // Custom validator for gtefield
     isAfterStartDate: helpers.withMessage(
       'Due date must be on or after start date',
       (value) => !value || !form.startDate || new Date(value) >= new Date(form.startDate)
@@ -145,7 +149,18 @@ const rules = {
 const v$ = useVuelidate(rules, form);
 
 onMounted(async () => {
-  await metaStore.fetchMeta(); // Ensure meta data is fetched
+  await metaStore.fetchMeta();
+  // Set default task type if available
+  if (metaStore.taskTypes.length > 0) {
+    form.taskTypeId = metaStore.taskTypes[0].ID;
+  }
+});
+
+// Watch for changes in taskTypes if they are fetched asynchronously after mount
+watch(() => metaStore.taskTypes, (newTypes) => {
+  if (newTypes.length > 0 && !form.taskTypeId) {
+    form.taskTypeId = newTypes[0].ID;
+  }
 });
 
 const uploadAttachment = async (file) => {
@@ -159,7 +174,7 @@ const uploadAttachment = async (file) => {
         'Content-Type': 'multipart/form-data',
       },
     });
-    form.attachmentPath = response.data.filePath; // Assuming backend returns { filePath: "..." }
+    form.attachmentPath = response.data.path; // Corrected to use 'path' from backend response
     toastStore.addToast('File uploaded successfully!', 'success');
   } catch (error) {
     console.error('File upload failed:', error);
