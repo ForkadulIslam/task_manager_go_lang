@@ -32,6 +32,7 @@ func ConnectDatabase() {
 		&models.TaskStatusUpdateLog{},
 		&models.TaskCommentLog{},
 		&models.TaskSeenByUser{},
+		&models.Notification{},
 	)
 
 	DB = database

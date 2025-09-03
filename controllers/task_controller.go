@@ -188,6 +188,18 @@ func CreateTask(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign task to user"})
 			return
 		}
+
+		// Create notification for assigned user
+		var notification models.Notification
+		notification = models.Notification{
+			UserID:  userID,
+			TaskID:  task.ID,
+			Type:    "new_task",
+			Message: fmt.Sprintf("You have been assigned a new task: %s", task.Label),
+		}
+		if err := database.DB.Create(&notification).Error; err != nil {
+			// Handle error
+		}
 	}
 
 	// Assign task to groups
@@ -213,6 +225,17 @@ func CreateTask(c *gin.Context) {
 			// Handle error, perhaps rollback task creation or log it
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign task to follow-up user"})
 			return
+		}
+
+		// Create notification for follow-up user
+		notification := models.Notification{
+			UserID:  userID,
+			TaskID:  task.ID,
+			Type:    "new_task",
+			Message: fmt.Sprintf("You are following a new task: %s", task.Label),
+		}
+		if err := database.DB.Create(&notification).Error; err != nil {
+			// Handle error
 		}
 	}
 
@@ -534,6 +557,21 @@ func UpdateTaskStatus(c *gin.Context) {
 		return
 	}
 
+	// Create notification for task creator
+	if task.CreatedBy != authUserID {
+		var user models.User
+		database.DB.First(&user, authUserID)
+		notification := models.Notification{
+			UserID:  task.CreatedBy,
+			TaskID:  task.ID,
+			Type:    "status_update",
+			Message: fmt.Sprintf("Task '%s' status updated to '%s' by %s", task.Label, input.Status, user.Username),
+		}
+		if err := tx.Create(&notification).Error; err != nil {
+			// Handle error
+		}
+	}
+
 	if err := tx.Commit().Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
 		return
@@ -620,6 +658,45 @@ func AddTaskComment(c *gin.Context) {
 	if err := database.DB.Create(&comment).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add comment"})
 		return
+	}
+
+	// Create notifications for task creator and associated users
+	var usersToNotify []uint
+	usersToNotify = append(usersToNotify, task.CreatedBy)
+
+	var assignedUsers []models.AssignTaskToUser
+	database.DB.Where("task_id = ?", task.ID).Find(&assignedUsers)
+	for _, u := range assignedUsers {
+		usersToNotify = append(usersToNotify, u.UserID)
+	}
+
+	var followupUsers []models.TaskFollowupUser
+	database.DB.Where("task_id = ?", task.ID).Find(&followupUsers)
+	for _, u := range followupUsers {
+		usersToNotify = append(usersToNotify, u.UserID)
+	}
+
+	// Remove duplicates and the user who commented
+	userMap := make(map[uint]bool)
+	for _, userID := range usersToNotify {
+		if userID != authUserID {
+			userMap[userID] = true
+		}
+	}
+
+	var user models.User
+	database.DB.First(&user, authUserID)
+
+	for userID := range userMap {
+		notification := models.Notification{
+			UserID:  userID,
+			TaskID:  task.ID,
+			Type:    "new_comment",
+			Message: fmt.Sprintf("New comment on task '%s' by %s", task.Label, user.Username),
+		}
+		if err := database.DB.Create(&notification).Error; err != nil {
+			// Handle error
+		}
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"data": comment})

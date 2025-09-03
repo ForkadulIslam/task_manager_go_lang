@@ -18,7 +18,8 @@
     <!-- Main Content -->
     <div class="flex-1 flex flex-col">
       <!-- Header -->
-      <header class="bg-gray-800 border-b border-gray-700 p-4 flex justify-end">
+      <header class="bg-gray-800 border-b border-gray-700 p-4 flex justify-end items-center">
+        <NotificationIcon class="mr-4" />
         <div>
           <span class="mr-4">Welcome, {{ authStore.user?.username }}!</span>
           <button @click="handleLogout" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition-colors">Logout</button>
@@ -38,6 +39,7 @@
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
 import ToastContainer from '../components/ToastContainer.vue'; // New import
+import NotificationIcon from '../components/NotificationIcon.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();

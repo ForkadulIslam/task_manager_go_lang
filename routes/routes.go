@@ -52,8 +52,12 @@ func SetupRoutes(r *gin.Engine) {
 		auth.GET("/user-groups/my-groups", controllers.GetGroupsForUser)
 
 		// Attachment upload route
-		auth.POST("/upload-attachment", controllers.UploadAttachment)
+				auth.POST("/upload-attachment", controllers.UploadAttachment)
 
+		// Notification routes
+		auth.GET("/notifications", controllers.GetNotifications)
+		auth.POST("/notifications/:id/read", controllers.MarkNotificationAsRead)
+		auth.POST("/notifications/read-all", controllers.MarkAllNotificationsAsRead)
 	}
 
 }
