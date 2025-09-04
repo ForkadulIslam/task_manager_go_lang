@@ -2,8 +2,9 @@ package main
 
 import (
 	"time" // New import for time.Duration
-	"github.com/gin-gonic/gin"
+
 	"github.com/gin-contrib/cors" // New import
+	"github.com/gin-gonic/gin"
 
 	"taskmanager/database"
 	"taskmanager/routes"
@@ -16,7 +17,7 @@ func main() {
 
 	// CORS Configuration
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173"}, // Frontend origin
+		AllowOrigins:     []string{"*"}, // Frontend origin
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},

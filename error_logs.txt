@@ -1,5 +1,0 @@
-RichTextEditor.vue:104 Image upload failed: Error: [tiptap error]: The editor view is not available. Cannot access view['hasFocus']. The editor may not be mounted yet.
-    at Object.get (chunk-A3Z7NPYI.js?v=948e3989:16151:17)
-    at chunk-A3Z7NPYI.js?v=948e3989:14500:12
-    at Object.chainedCommand [as focus] (chunk-A3Z7NPYI.js?v=948e3989:12132:47)
-    at uploadImage (RichTextEditor.vue:101:30)
