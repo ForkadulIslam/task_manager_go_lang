@@ -9,7 +9,8 @@ export default defineConfig({
     vue(),
   ],
   define: {
-    'import.meta.env.VITE_API_BASE_URL': JSON.stringify('http://localhost:8080'),
+    //'import.meta.env.VITE_API_BASE_URL': JSON.stringify('http://localhost:8080'),
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify('https://task.techvengersltd.com/api'),
   },
   resolve: {
     alias: {
