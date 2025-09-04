@@ -22,6 +22,10 @@
         <NotificationIcon class="mr-4" />
         <div>
           <span class="mr-4">Welcome, {{ authStore.user?.username }}!</span>
+          <button @click="handleSyncUsers" :disabled="isSyncing" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors mr-4">
+            <span v-if="isSyncing">Syncing...</span>
+            <span v-else>Sync Users</span>
+          </button>
           <button @click="handleLogout" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition-colors">Logout</button>
         </div>
       </header>
@@ -36,17 +40,36 @@
 </template>
 
 <script setup>
+import { ref } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
 import ToastContainer from '../components/ToastContainer.vue'; // New import
 import NotificationIcon from '../components/NotificationIcon.vue';
+import apiClient from '../services/api';
+import { useToastStore } from '../stores/toast';
 
 const authStore = useAuthStore();
 const router = useRouter();
+const toastStore = useToastStore();
+
+const isSyncing = ref(false);
 
 const handleLogout = () => {
   authStore.logout();
   router.push('/login');
+};
+
+const handleSyncUsers = async () => {
+  isSyncing.value = true;
+  try {
+    await apiClient.get('/sync-user');
+    toastStore.addToast('Users synced successfully!', 'success');
+  } catch (error) {
+    console.error('Failed to sync users:', error);
+    toastStore.addToast('Failed to sync users. Please try again.', 'error');
+  } finally {
+    isSyncing.value = false;
+  }
 };
 </script>
 
